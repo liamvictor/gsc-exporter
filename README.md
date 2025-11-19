@@ -139,3 +139,62 @@ The script generates two files in the `output/<hostname>` directory:
     *   High Impressions, Low CTR Opportunities
 
 The HTML report also contains a link in the footer to a detailed guide on how to interpret the data, located at `resources/how-to-read-the-performance-analysis-report.html`.
+
+---
+
+## Performance Snapshot
+
+The `snapshot-report.py` script provides a single-period overview of your Google Search Console performance data. It fetches key metrics (clicks, impressions, CTR, average position) for a specified date range and presents various observations to help you understand your site's organic search presence.
+
+### Usage
+
+Run the script from the command line, providing the site URL and a date range option.
+
+```bash
+python snapshot-report.py <site_url> [date_range_option]
+```
+
+*   `<site_url>`: (Required) The full URL of the site property (e.g., `https://www.example.com`) or a domain property (e.g., `sc-domain:example.com`).
+
+### Date Range Options
+You can specify a date range using one of the following options. If no option is provided, the script will default to the last 3 months.
+
+*   `--last-24-hours`: Use the last 24 hours for the report.
+*   `--last-7-days`: Use the last 7 days for the report.
+*   `--last-3-months`: (Default) Use the last 3 months for the report.
+*   `--last-6-months`: Use the last 6 months for the report.
+*   `--last-12-months`: Use the last 12 months for the report.
+*   `--last-16-months`: Use the last 16 months for the report (the maximum allowed by the API).
+
+These options are mutually exclusive.
+
+### Examples
+
+**Generate a snapshot for the last 3 months (default):**
+```bash
+python snapshot-report.py https://www.example.com
+```
+
+**Generate a snapshot for the last 7 days:**
+```bash
+python snapshot-report.py https://www.example.com --last-7-days
+```
+
+**Generate a snapshot for the last 12 months:**
+```bash
+python snapshot-report.py sc-domain:example.com --last-12-months
+```
+
+### Output
+The script generates two files in the `output/<hostname>` directory:
+
+1.  **`snapshot-pages-[...].csv`**: A detailed CSV file containing the performance data for all pages, including clicks, impressions, CTR, and average position, for the specified period.
+2.  **`snapshot-report-[...].html`**: An HTML report that provides an overview of the analysis, with tables for:
+    *   Top Pages by Clicks
+    *   Top Pages by Impressions
+    *   High Impressions, Low CTR Opportunities
+    *   Performance by Device
+    *   Performance by Country
+
+The HTML report also contains a link in the footer to a detailed guide on how to interpret the data, located at `resources/how-to-read-the-snapshot-report.html`.
+

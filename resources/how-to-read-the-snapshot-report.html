@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How to Read the Performance Snapshot Report</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { padding: 2rem; }
+        h1, h2, h3 { border-bottom: 2px solid #dee2e6; padding-bottom: 0.5rem; margin-top: 2rem; }
+        .card { margin-top: 1.5rem; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>How to Read the Performance Snapshot Report</h1>
+        <p class="lead">This document explains the different observations and tables presented in the Performance Snapshot Report.</p>
+
+        <h2>Understanding the Tables</h2>
+        <p>The report provides a single-period overview of your website's performance in Google Search, broken down into several analytical sections.</p>
+
+        <div class="card">
+            <div class="card-header">
+                Top Pages by Clicks
+            </div>
+            <div class="card-body">
+                <p>This table lists the pages that generated the most organic clicks during the specified reporting period.</p>
+                <p><strong>What to learn:</strong> Identify your most successful content in terms of driving traffic. These pages are often key drivers of your website's organic visibility.</p>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                Top Pages by Impressions
+            </div>
+            <div class="card-body">
+                <p>This table shows the pages with the highest number of impressions in Google Search results during the period.</p>
+                <p><strong>What to learn:</strong> Understand which of your pages are most visible to users. High impressions indicate strong ranking for relevant keywords, even if clicks are not as high.</p>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                High Impressions, Low CTR Opportunities
+            </div>
+            <div class="card-body">
+                <p>This table highlights pages that are frequently displayed in search results (high impressions) but receive a low proportion of clicks (low Click-Through Rate).</p>
+                <p><strong>What to learn:</strong> These are prime candidates for optimisation. Improving the page title, meta description, or even the content itself can make these listings more appealing, leading to a significant increase in organic traffic from existing visibility.</p>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                Performance by Device
+            </div>
+            <div class="card-body">
+                <p>This table provides a summary of your website's organic search performance broken down by device type (desktop, mobile, tablet).</p>
+                <p><strong>What to learn:</strong> Understand how different device users interact with your site in search. Discrepancies might indicate issues with mobile usability, page loading speed on certain devices, or content that resonates more with users on specific devices.</p>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                Performance by Country
+            </div>
+            <div class="card-body">
+                <p>This table shows your website's organic search performance segmented by the country where the searches originated.</p>
+                <p><strong>What to learn:</strong> Identify your primary geographic audiences. Significant performance differences between countries might suggest opportunities for localised content, language targeting, or international SEO strategies.</p>
+            </div>
+        </div>
+
+        <h2>Column Definitions</h2>
+        <p>Here is a definition of each column used in the tables:</p>
+        <table class="table table-bordered">
+            <thead class="table-light">
+                <tr>
+                    <th>Column Name</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>page</code> / <code>device</code> / <code>country</code></td>
+                    <td>The dimension being analysed (e.g., the URL of the page, the device type, or the country).</td>
+                </tr>
+                <tr>
+                    <td><code>clicks</code></td>
+                    <td>The total number of clicks received for this dimension during the period.</td>
+                </tr>
+                <tr>
+                    <td><code>impressions</code></td>
+                    <td>The total number of times this dimension appeared in search results during the period.</td>
+                </tr>
+                <tr>
+                    <td><code>ctr</code></td>
+                    <td>The Click-Through Rate (Clicks / Impressions), indicating the percentage of impressions that resulted in a click.</td>
+                </tr>
+                <tr>
+                    <td><code>position</code></td>
+                    <td>The average ranking position for this dimension in search results. A lower number indicates a better (higher) ranking.</td>
+                </tr>
+            </tbody>
+        </table>
+
+    </div>
+</body>
+</html>
