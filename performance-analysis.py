@@ -229,13 +229,13 @@ def main():
     host_for_filename = host_dir.replace('.', '-')
 
     # Save detailed comparison to CSV
-    csv_file_name = f"performance-comparison-{host_for_filename}-{period_label}.csv"
+    csv_file_name = f"performance-comparison-{host_for_filename}-{period_label}-{current_start_date}-to-{current_end_date}.csv"
     csv_output_path = os.path.join(output_dir, csv_file_name)
     df_merged.to_csv(csv_output_path, index=False, encoding='utf-8')
     print(f"\nSuccessfully exported comparison data to {csv_output_path}")
 
     # Generate and save HTML report
-    html_file_name = f"performance-report-{host_for_filename}-{period_label}.html"
+    html_file_name = f"performance-report-{host_for_filename}-{period_label}-{current_start_date}-to-{current_end_date}.html"
     html_output_path = os.path.join(output_dir, html_file_name)
     html_output = create_html_report(
         page_title=f"Performance Analysis for {host_dir}",
