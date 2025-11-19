@@ -106,6 +106,7 @@ def main():
     comparison_group.add_argument('--compare-last-quarter', action='store_true', help='Compare last full quarter to the previous quarter.')
 
     args = parser.parse_args()
+    site_url = args.site_url
 
     # Set default comparison if none is chosen
     if not any([args.compare_last_28_days, args.compare_last_month, args.compare_last_quarter]):
