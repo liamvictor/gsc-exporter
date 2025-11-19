@@ -271,7 +271,7 @@ def create_html_report(page_title, current_period_str, previous_period_str, df_b
         body {{ padding: 2rem; }}
         .table-responsive {{ max-height: 500px; overflow-y: auto; }}
         h2 {{ border-bottom: 2px solid #dee2e6; padding-bottom: 0.5rem; margin-top: 2rem; }}
-        .suggestion-box {{ background-color: #eef; border-left: 5px solid #88f; padding: 1.5rem; margin-top: 2rem; }}
+        footer {{ margin-top: 3rem; text-align: center; color: #6c757d; }}
     </style>
 </head>
 <body>
@@ -295,17 +295,11 @@ def create_html_report(page_title, current_period_str, previous_period_str, df_b
             {df_to_html(df_low_ctr, 'table-low-ctr')}
         </div>
         
-        <div class="suggestion-box">
-            <h4>Further Analysis Suggestions</h4>
-            <ul>
-                <li><strong>Rising Stars:</strong> Identify pages with minimal impressions in the previous period but significant impressions now. This could indicate newly ranking content.</li>
-                <li><strong>Falling Stars:</strong> Find pages that had high traffic but have seen a massive drop-off, which might signal content decay or new competition.</li>
-                <li><strong>Keyword Delta:</strong> Analyze the change in top queries for key pages to understand shifts in user search behavior.</li>
-                <li><strong>Device & Country Performance:</strong> Segment the data by device or country to see where performance changes are originating.</li>
-            </ul>
-        </div>
-
     </div>
+
+    <footer>
+        <p><a href="../../resources/how-to-read-the-performance-analysis-report.html">How to Read This Report</a></p>
+    </footer>
 </body>
 </html>
 """

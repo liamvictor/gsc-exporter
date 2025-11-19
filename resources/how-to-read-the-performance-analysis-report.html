@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How to Read the Performance Analysis Report</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { padding: 2rem; }
+        h1, h2, h3 { border-bottom: 2px solid #dee2e6; padding-bottom: 0.5rem; margin-top: 2rem; }
+        .card { margin-top: 1.5rem; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>How to Read the Performance Analysis Report</h1>
+        <p class="lead">This document explains the different sections of the performance report and what the data means.</p>
+
+        <h2>Understanding the Tables</h2>
+        <p>The report is divided into three main sections, each providing a different perspective on your website's performance in Google Search.</p>
+
+        <div class="card">
+            <div class="card-header">
+                Best & Worst Performing Content
+            </div>
+            <div class="card-body">
+                <p>These two tables show the pages that have had the biggest change in clicks between the current and previous periods.</p>
+                <ul>
+                    <li><strong>Best Performing:</strong> Pages with the largest positive change in clicks. These are your recent winners.</li>
+                    <li><strong>Worst Performing:</strong> Pages with the largest negative change (or loss) in clicks. These may need attention.</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                High Impressions, Low CTR Opportunities
+            </div>
+            <div class="card-body">
+                <p>This table highlights pages that many people are seeing in search results (high impressions) but few are clicking on (low Click-Through Rate).</p>
+                <p>These are often your best candidates for quick wins. Improving the page title or meta description can entice more users to click, leading to a significant traffic increase from existing visibility.</p>
+            </div>
+        </div>
+
+        <h2>Column Definitions</h2>
+        <p>Here is a definition of each column used in the comparison tables:</p>
+        <table class="table table-bordered">
+            <thead class="table-light">
+                <tr>
+                    <th>Column Name</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>page</code></td>
+                    <td>The URL of the page being analyzed.</td>
+                </tr>
+                <tr>
+                    <td><code>clicks_current</code> / <code>clicks_previous</code></td>
+                    <td>The total number of clicks the page received in the current / previous period.</td>
+                </tr>
+                <tr>
+                    <td><code>impressions_current</code> / <code>impressions_previous</code></td>
+                    <td>The total number of times the page was shown in search results in the current / previous period.</td>
+                </tr>
+                <tr>
+                    <td><code>ctr_current</code> / <code>ctr_previous</code></td>
+                    <td>The Click-Through Rate (Clicks / Impressions) for the page in the current / previous period.</td>
+                </tr>
+                <tr>
+                    <td><code>position_current</code> / <code>position_previous</code></td>
+                    <td>The average ranking position of the page in search results for the current / previous period. A lower number is better.</td>
+                </tr>
+                <tr>
+                    <td><code>clicks_delta</code></td>
+                    <td>The change in clicks (<code>clicks_current - clicks_previous</code>). A positive number is good.</td>
+                </tr>
+                <tr>
+                    <td><code>impressions_delta</code></td>
+                    <td>The change in impressions (<code>impressions_current - impressions_previous</code>).</td>
+                </tr>
+                <tr>
+                    <td><code>ctr_delta</code></td>
+                    <td>The absolute change in CTR (<code>ctr_current - ctr_previous</code>).</td>
+                </tr>
+                <tr>
+                    <td><code>position_delta</code></td>
+                    <td>The change in average position (<code>position_previous - position_current</code>). A positive number indicates an improvement in ranking (e.g., moving from position 10 to 5 gives a delta of +5).</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2>Further Analysis Suggestions</h2>
+        <p>To get even more value from your Search Console data, consider these analyses:</p>
+        <ul>
+            <li><strong>Rising Stars:</strong> Identify pages with minimal impressions in the previous period but significant impressions now. This could indicate newly ranking content worth promoting further.</li>
+            <li><strong>Falling Stars:</strong> Find pages that had high traffic but have seen a massive drop-off. This might signal content decay, new competition, or technical issues that need investigation.</li>
+            <li><strong>Keyword Delta Analysis:</strong> For a specific page, analyze the change in top queries driving traffic. Have you started ranking for new terms? Have you lost ranking for valuable old terms? This helps you understand shifts in user search behavior related to your content.</li>
+            <li><strong>Device & Country Performance:</strong> Segment your entire site's performance data by device (desktop vs. mobile) or by country. A drop in mobile traffic, for example, could point to a mobile usability issue.</li>
+            <li><strong>Content Cannibalization:</strong> Look for multiple pages from your site ranking for the same important keyword. This can dilute your authority. You may want to consolidate the content into a single, more comprehensive page.</li>
+        </ul>
+
+    </div>
+</body>
+</html>
