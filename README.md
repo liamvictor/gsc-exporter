@@ -84,3 +84,56 @@ python gsc_pages_exporter.py https://www.example.com --last-12-months
 The script will create two files in the `output/<hostname>` directory:
 1.  A CSV file with all the URLs.
 2.  An HTML file with a clickable list of all the URLs.
+
+---
+
+## Performance Analysis
+
+The `performance-analysis.py` script extends the functionality by fetching and comparing key performance metrics (clicks, impressions, CTR, position) between two time periods. It's designed to help you quickly identify content that has changed in performance, as well as find new optimization opportunities.
+
+### Usage
+
+Run the script from the command line, providing the site URL and a comparison flag.
+
+```bash
+python performance-analysis.py <site_url> [comparison_option]
+```
+
+*   `<site_url>`: (Required) The full URL of the site property (e.g., `https://www.example.com`) or a domain property (e.g., `sc-domain:example.com`).
+
+### Comparison Options
+You must specify a comparison period. These options determine the two date ranges the script will analyze.
+
+*   `--compare-last-28-days`: (Default) Compares the most recent 28 days to the 28 days prior.
+*   `--compare-last-month`: Compares the last full calendar month to the month before it.
+*   `--compare-last-quarter`: Compares the last full calendar quarter to the quarter before it.
+
+If no option is provided, the script will default to `--compare-last-28-days`.
+
+### Examples
+
+**Analyze performance over the last 28 days (default):**
+```bash
+python performance-analysis.py https://www.example.com
+```
+
+**Analyze performance of the last full month vs. the previous month:**
+```bash
+python performance-analysis.py https://www.example.com --compare-last-month
+```
+
+**Analyze performance of the last full quarter vs. the previous quarter:**
+```bash
+python performance-analysis.py sc-domain:example.com --compare-last-quarter
+```
+
+### Output
+The script generates two files in the `output/<hostname>` directory:
+
+1.  **`performance-comparison-[...].csv`**: A detailed CSV file containing the merged performance data for all pages across both periods, including calculated deltas for each metric.
+2.  **`performance-report-[...].html`**: An HTML report that provides a summary of the analysis, with tables for:
+    *   Best Performing Content (by change in clicks)
+    *   Worst Performing Content (by change in clicks)
+    *   High Impressions, Low CTR Opportunities
+
+The HTML report also contains a link in the footer to a detailed guide on how to interpret the data, located at `resources/how-to-read-the-performance-analysis-report.html`.
