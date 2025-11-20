@@ -47,7 +47,12 @@ python gsc_pages_exporter.py <site_url> [date_range_option]
 You can specify a date range using one of the following options. If no option is provided, the script will default to the previous full calendar month.
 
 *   `--start-date <YYYY-MM-DD> --end-date <YYYY-MM-DD>`: Specify a custom date range.
+*   `--last-24-hours`: Use the last 24 hours for the report.
+*   `--last-7-days`: Use the last 7 days for the report.
+*   `--last-28-days`: Use the last 28 days for the report.
+*   `--last-month`: Use the last calendar month for the report.
 *   `--last-quarter`: Use the last 3 months as the date range.
+*   `--last-3-months`: Use the last 3 months as the date range.
 *   `--last-6-months`: Use the last 6 months as the date range.
 *   `--last-12-months`: Use the last 12 months as the date range.
 *   `--last-16-months`: Use the last 16 months as the date range (the maximum allowed by the API).
@@ -102,29 +107,34 @@ python performance-analysis.py <site_url> [comparison_option]
 *   `<site_url>`: (Required) The full URL of the site property (e.g., `https://www.example.com`) or a domain property (e.g., `sc-domain:example.com`).
 
 ### Comparison Options
-You must specify a comparison period. These options determine the two date ranges the script will analyze.
+You can specify a comparison period. If no option is provided, the script will default to comparing the last full calendar month to the month before it.
 
-*   `--compare-last-28-days`: (Default) Compares the most recent 28 days to the 28 days prior.
-*   `--compare-last-month`: Compares the last full calendar month to the month before it.
-*   `--compare-last-quarter`: Compares the last full calendar quarter to the quarter before it.
-
-If no option is provided, the script will default to `--compare-last-28-days`.
+*   `--start-date <YYYY-MM-DD> --end-date <YYYY-MM-DD>`: Specify a custom date range.
+*   `--last-24-hours`: Compares the last 24 hours to the previous 24 hours.
+*   `--last-7-days`: Compares the last 7 days to the previous 7 days.
+*   `--last-28-days`: Compares the last 28 days to the previous 28-day period.
+*   `--last-month`: Compares the last full calendar month to the month before it.
+*   `--last-quarter`: Compares the last full calendar quarter to the quarter before it.
+*   `--last-3-months`: Compares the last 3 months to the previous 3-month period.
+*   `--last-6-months`: Compares the last 6 months to the previous 6-month period.
+*   `--last-12-months`: Compares the last 12 months to the previous 12-month period.
+*   `--last-16-months`: Compares the last 16 months to the previous 16-month period.
 
 ### Examples
 
-**Analyze performance over the last 28 days (default):**
+**Analyze performance over the last month (default):**
 ```bash
 python performance-analysis.py https://www.example.com
 ```
 
-**Analyze performance of the last full month vs. the previous month:**
+**Analyze performance of the last 28 days vs. the previous 28 days:**
 ```bash
-python performance-analysis.py https://www.example.com --compare-last-month
+python performance-analysis.py https://www.example.com --last-28-days
 ```
 
 **Analyze performance of the last full quarter vs. the previous quarter:**
 ```bash
-python performance-analysis.py sc-domain:example.com --compare-last-quarter
+python performance-analysis.py sc-domain:example.com --last-quarter
 ```
 
 ### Output
@@ -157,11 +167,15 @@ python snapshot-report.py <site_url> [date_range_option]
 *   `<site_url>`: (Required) The full URL of the site property (e.g., `https://www.example.com`) or a domain property (e.g., `sc-domain:example.com`).
 
 ### Date Range Options
-You can specify a date range using one of the following options. If no option is provided, the script will default to the last 3 months.
+You can specify a date range using one of the following options. If no option is provided, the script will default to the last calendar month.
 
+*   `--start-date <YYYY-MM-DD> --end-date <YYYY-MM-DD>`: Specify a custom date range.
 *   `--last-24-hours`: Use the last 24 hours for the report.
 *   `--last-7-days`: Use the last 7 days for the report.
-*   `--last-3-months`: (Default) Use the last 3 months for the report.
+*   `--last-28-days`: Use the last 28 days for the report.
+*   `--last-month`: Use the last calendar month for the report.
+*   `--last-quarter`: Use the last 3 months for the report.
+*   `--last-3-months`: Use the last 3 months for the report.
 *   `--last-6-months`: Use the last 6 months for the report.
 *   `--last-12-months`: Use the last 12 months for the report.
 *   `--last-16-months`: Use the last 16 months for the report (the maximum allowed by the API).
@@ -170,7 +184,7 @@ These options are mutually exclusive.
 
 ### Examples
 
-**Generate a snapshot for the last 3 months (default):**
+**Generate a snapshot for the last month (default):**
 ```bash
 python snapshot-report.py https://www.example.com
 ```

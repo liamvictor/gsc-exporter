@@ -100,65 +100,127 @@ def main():
     parser = argparse.ArgumentParser(description='Analyze Google Search Console performance data.')
     parser.add_argument('site_url', help='The URL of the site to analyze. Use sc-domain: for a domain property.')
 
-    comparison_group = parser.add_mutually_exclusive_group()
-    comparison_group.add_argument('--compare-last-28-days', action='store_true', help='Compare last 28 days to the previous 28 days. (Default)')
-    comparison_group.add_argument('--compare-last-month', action='store_true', help='Compare last full month to the previous month.')
-    comparison_group.add_argument('--compare-last-quarter', action='store_true', help='Compare last full quarter to the previous quarter.')
+    parser.add_argument('site_url', help='The URL of the site to analyze. Use sc-domain: for a domain property.')
 
+    date_group = parser.add_mutually_exclusive_group()
+    date_group.add_argument('--start-date', help='Start date in YYYY-MM-DD format for the current period.')
+    date_group.add_argument('--last-24-hours', action='store_true', help='Compare the last 24 hours to the previous 24 hours.')
+    date_group.add_argument('--last-7-days', action='store_true', help='Compare the last 7 days to the previous 7 days.')
+    date_group.add_argument('--last-28-days', action='store_true', help='Compare last 28 days to the previous 28 days. (Default)')
+    date_group.add_argument('--last-month', action='store_true', help='Compare last full month to the previous month.')
+    date_group.add_argument('--last-quarter', action='store_true', help='Compare last full quarter to the previous quarter.')
+    date_group.add_argument('--last-3-months', action='store_true', help='Compare last 3 months to the previous 3 months.')
+    date_group.add_argument('--last-6-months', action='store_true', help='Compare last 6 months to the previous 6 months.')
+    date_group.add_argument('--last-12-months', action='store_true', help='Compare last 12 months to the previous 12 months.')
+    date_group.add_argument('--last-16-months', action='store_true', help='Compare last 16 months to the previous 16 months.')
+
+    parser.add_argument('--end-date', help='End date in YYYY-MM-DD format for the current period.')
+    
     args = parser.parse_args()
     site_url = args.site_url
 
     # Set default comparison if none is chosen
-    if not any([args.compare_last_28_days, args.compare_last_month, args.compare_last_quarter]):
-        args.compare_last_28_days = True
+    if not any([
+        args.start_date, args.last_24_hours, args.last_7_days, args.last_28_days, 
+        args.last_month, args.last_quarter, args.last_3_months, 
+        args.last_6_months, args.last_12_months, args.last_16_months
+    ]):
+        args.last_month = True
 
     print("Starting performance analysis...")
     
     today = date.today()
     
-    if args.compare_last_28_days:
-        # Current period: last 28 days
+    if args.start_date and args.end_date:
+        current_start_date = args.start_date
+        current_end_date = args.end_date
+        
+        start_date_dt = datetime.strptime(current_start_date, '%Y-%m-%d').date()
+        end_date_dt = datetime.strptime(current_end_date, '%Y-%m-%d').date()
+        duration = (end_date_dt - start_date_dt).days
+        
+        previous_end_date_dt = start_date_dt - timedelta(days=1)
+        previous_start_date_dt = previous_end_date_dt - timedelta(days=duration)
+        
+        previous_start_date = previous_start_date_dt.strftime('%Y-%m-%d')
+        previous_end_date = previous_end_date_dt.strftime('%Y-%m-%d')
+        
+        period_label = f"custom-period"
+
+    elif args.last_24_hours:
+        current_start_date = (today - timedelta(days=2)).strftime('%Y-%m-%d')
+        current_end_date = (today - timedelta(days=2)).strftime('%Y-%m-%d')
+        previous_start_date = (today - timedelta(days=3)).strftime('%Y-%m-%d')
+        previous_end_date = (today - timedelta(days=3)).strftime('%Y-%m-%d')
+        period_label = "last-24-hours"
+        
+    elif args.last_7_days:
+        current_start_date = (today - timedelta(days=7)).strftime('%Y-%m-%d')
+        current_end_date = today.strftime('%Y-%m-%d')
+        previous_start_date = (today - timedelta(days=14)).strftime('%Y-%m-%d')
+        previous_end_date = (today - timedelta(days=8)).strftime('%Y-%m-%d')
+        period_label = "last-7-days"
+
+    elif args.last_28_days:
         current_start_date = (today - timedelta(days=28)).strftime('%Y-%m-%d')
         current_end_date = today.strftime('%Y-%m-%d')
-        # Previous period: 28 days before the current period
         previous_start_date = (today - timedelta(days=56)).strftime('%Y-%m-%d')
         previous_end_date = (today - timedelta(days=29)).strftime('%Y-%m-%d')
         period_label = "last-28-days"
 
-    elif args.compare_last_month:
-        # Current period: last full calendar month
+    elif args.last_month:
         first_day_of_current_month = today.replace(day=1)
         current_end_date_dt = first_day_of_current_month - timedelta(days=1)
         current_start_date_dt = current_end_date_dt.replace(day=1)
         current_start_date = current_start_date_dt.strftime('%Y-%m-%d')
         current_end_date = current_end_date_dt.strftime('%Y-%m-%d')
         
-        # Previous period: the month before the last full calendar month
         previous_end_date_dt = current_start_date_dt - timedelta(days=1)
         previous_start_date_dt = previous_end_date_dt.replace(day=1)
         previous_start_date = previous_start_date_dt.strftime('%Y-%m-%d')
         previous_end_date = previous_end_date_dt.strftime('%Y-%m-%d')
         period_label = "last-month"
         
-    elif args.compare_last_quarter:
-        # Current period: last full calendar quarter
+    elif args.last_quarter:
         current_quarter = (today.month - 1) // 3
-        
-        # End of the last quarter
         current_end_date_dt = datetime(today.year, 3 * current_quarter + 1, 1).date() - timedelta(days=1)
-        # Start of the last quarter
         current_start_date_dt = current_end_date_dt.replace(day=1) - relativedelta(months=2)
-
         current_start_date = current_start_date_dt.strftime('%Y-%m-%d')
         current_end_date = current_end_date_dt.strftime('%Y-%m-%d')
 
-        # Previous period: the quarter before the last full quarter
         previous_end_date_dt = current_start_date_dt - timedelta(days=1)
         previous_start_date_dt = previous_end_date_dt.replace(day=1) - relativedelta(months=2)
-
         previous_start_date = previous_start_date_dt.strftime('%Y-%m-%d')
         previous_end_date = previous_end_date_dt.strftime('%Y-%m-%d')
         period_label = "last-quarter"
+        
+    elif args.last_3_months:
+        current_start_date = (today - relativedelta(months=3)).strftime('%Y-%m-%d')
+        current_end_date = today.strftime('%Y-%m-%d')
+        previous_start_date = (today - relativedelta(months=6)).strftime('%Y-%m-%d')
+        previous_end_date = (today - relativedelta(months=3) - timedelta(days=1)).strftime('%Y-%m-%d')
+        period_label = "last-3-months"
+
+    elif args.last_6_months:
+        current_start_date = (today - relativedelta(months=6)).strftime('%Y-%m-%d')
+        current_end_date = today.strftime('%Y-%m-%d')
+        previous_start_date = (today - relativedelta(months=12)).strftime('%Y-%m-%d')
+        previous_end_date = (today - relativedelta(months=6) - timedelta(days=1)).strftime('%Y-%m-%d')
+        period_label = "last-6-months"
+
+    elif args.last_12_months:
+        current_start_date = (today - relativedelta(months=12)).strftime('%Y-%m-%d')
+        current_end_date = today.strftime('%Y-%m-%d')
+        previous_start_date = (today - relativedelta(months=24)).strftime('%Y-%m-%d')
+        previous_end_date = (today - relativedelta(months=12) - timedelta(days=1)).strftime('%Y-%m-%d')
+        period_label = "last-12-months"
+
+    elif args.last_16_months:
+        current_start_date = (today - relativedelta(months=16)).strftime('%Y-%m-%d')
+        current_end_date = today.strftime('%Y-%m-%d')
+        previous_start_date = (today - relativedelta(months=32)).strftime('%Y-%m-%d')
+        previous_end_date = (today - relativedelta(months=16) - timedelta(days=1)).strftime('%Y-%m-%d')
+        period_label = "last-16-months"
 
     print(f"Current period: {current_start_date} to {current_end_date}")
     print(f"Previous period: {previous_start_date} to {previous_end_date}")

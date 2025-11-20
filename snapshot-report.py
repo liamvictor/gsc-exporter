@@ -117,25 +117,39 @@ def main():
     parser.add_argument('site_url', help='The URL of the site to analyse. Use sc-domain: for a domain property.')
 
     date_group = parser.add_mutually_exclusive_group()
+    date_group.add_argument('--start-date', help='Start date in YYYY-MM-DD format.')
     date_group.add_argument('--last-24-hours', action='store_true', help='Use the last 24 hours for the report.')
     date_group.add_argument('--last-7-days', action='store_true', help='Use the last 7 days for the report.')
+    date_group.add_argument('--last-28-days', action='store_true', help='Use the last 28 days for the report.')
+    date_group.add_argument('--last-month', action='store_true', help='Use the last calendar month for the report.')
+    date_group.add_argument('--last-quarter', action='store_true', help='Use the last quarter for the report.')
     date_group.add_argument('--last-3-months', action='store_true', help='Use the last 3 months for the report. (Default)')
     date_group.add_argument('--last-6-months', action='store_true', help='Use the last 6 months for the report.')
     date_group.add_argument('--last-12-months', action='store_true', help='Use the last 12 months for the report.')
     date_group.add_argument('--last-16-months', action='store_true', help='Use the last 16 months for the report.')
 
+    parser.add_argument('--end-date', help='End date in YYYY-MM-DD format. Used only with --start-date.')
+    
     args = parser.parse_args()
     site_url = args.site_url
 
     # Set default date range if none is chosen
-    if not any([args.last_24_hours, args.last_7_days, args.last_3_months, args.last_6_months, args.last_12_months, args.last_16_months]):
-        args.last_3_months = True
+    if not any([
+        args.start_date, args.last_24_hours, args.last_7_days, args.last_28_days,
+        args.last_month, args.last_quarter, args.last_3_months,
+        args.last_6_months, args.last_12_months, args.last_16_months
+    ]):
+        args.last_month = True
 
     print("Starting snapshot report...")
 
     today = date.today()
     
-    if args.last_24_hours:
+    if args.start_date and args.end_date:
+        start_date = args.start_date
+        end_date = args.end_date
+        period_label = "custom-period"
+    elif args.last_24_hours:
         start_date = (today - timedelta(days=2)).strftime('%Y-%m-%d')
         end_date = (today - timedelta(days=2)).strftime('%Y-%m-%d')
         period_label = "last-24-hours"
@@ -143,6 +157,23 @@ def main():
         start_date = (today - timedelta(days=7)).strftime('%Y-%m-%d')
         end_date = today.strftime('%Y-%m-%d')
         period_label = "last-7-days"
+    elif args.last_28_days:
+        start_date = (today - timedelta(days=28)).strftime('%Y-%m-%d')
+        end_date = today.strftime('%Y-%m-%d')
+        period_label = "last-28-days"
+    elif args.last_month:
+        first_day_of_current_month = today.replace(day=1)
+        last_day_of_previous_month = first_day_of_current_month - timedelta(days=1)
+        start_date = last_day_of_previous_month.replace(day=1).strftime('%Y-%m-%d')
+        end_date = last_day_of_previous_month.strftime('%Y-%m-%d')
+        period_label = "last-month"
+    elif args.last_quarter:
+        current_quarter = (today.month - 1) // 3
+        end_date_dt = datetime(today.year, 3 * current_quarter + 1, 1).date() - timedelta(days=1)
+        start_date_dt = end_date_dt.replace(day=1) - relativedelta(months=2)
+        start_date = start_date_dt.strftime('%Y-%m-%d')
+        end_date = end_date_dt.strftime('%Y-%m-%d')
+        period_label = "last-quarter"
     elif args.last_6_months:
         start_date = (today - relativedelta(months=6)).strftime('%Y-%m-%d')
         end_date = today.strftime('%Y-%m-%d')
