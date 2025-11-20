@@ -119,6 +119,7 @@ You can specify a comparison period. If no option is provided, the script will d
 *   `--last-6-months`: Compares the last 6 months to the previous 6-month period.
 *   `--last-12-months`: Compares the last 12 months to the previous 12-month period.
 *   `--last-16-months`: Compares the last 16 months to the previous 16-month period.
+*   `--compare-to-previous-year`: When used with another date range flag, this compares the selected period to the same period in the previous year.
 
 ### Examples
 
@@ -136,6 +137,12 @@ python performance-analysis.py https://www.example.com --last-28-days
 ```bash
 python performance-analysis.py sc-domain:example.com --last-quarter
 ```
+
+**Analyze year-over-year performance for the last month:**
+```bash
+python performance-analysis.py https://www.example.com --last-month --compare-to-previous-year
+```
+This will compare performance data from the last full calendar month against the same month from the previous year.
 
 ### Output
 The script generates two files in the `output/<hostname>` directory:
