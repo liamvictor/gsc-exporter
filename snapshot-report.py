@@ -325,6 +325,7 @@ def create_snapshot_html_report(page_title, period_str, df_top_clicks, df_top_im
 
     <footer>
         <p><a href="../../resources/how-to-read-the-snapshot-report.html">How to Read Reports (General Guide)</a></p>
+        <p><a href="https://github.com/liamdelahunty/gsc-exporter" target="_blank">gsc-exporter</a></p>
     </footer>
 </body>
 </html>

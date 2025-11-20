@@ -77,10 +77,11 @@ def get_all_pages(service, site_url, start_date, end_date):
 
 def create_html_page(urls, page_title, num_columns, start_date, end_date, num_links):
     """Generates an HTML page with links arranged in columns using a list-join pattern."""
+    footer_style = 'footer{margin-top:2rem;padding-top:1rem;border-top:1px solid #dee2e6;text-align:center;font-size:0.9rem;color:#6c757d;}'
     html_parts = [
         f'<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width, initial-scale=1.0">\n<title>{page_title}</title>',
         '<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">',
-        '<style>body{padding:20px;}.list-group-item a{text-decoration:none;word-break:break-all;}.list-group-item:hover{background-color:#f8f9fa;}</style>',
+        f'<style>body{{padding:20px;}}.list-group-item a{{text-decoration:none;word-break:break-all;}}.list-group-item:hover{{background-color:#f8f9fa;}}{footer_style}</style>',
         f'</head>\n<body>\n<div class="container-fluid">\n<h1 class="mb-4">{page_title}</h1>\n'
         f'<h2 class="mb-4">Date Range: {start_date} to {end_date}</h2>\n'
         f'<h3 class="mb-4">Total Links: {num_links}</h3>\n'
@@ -99,7 +100,7 @@ def create_html_page(urls, page_title, num_columns, start_date, end_date, num_li
         html_parts.append('</ul>\n')
         html_parts.append('</div>')
 
-    html_parts.extend(['</div></div></body></html>'])
+    html_parts.extend(['</div></div><footer><p><a href="https://github.com/liamdelahunty/gsc-exporter" target="_blank">gsc-exporter</a></p></footer></body></html>'])
     return "".join(html_parts)
 
 def main():

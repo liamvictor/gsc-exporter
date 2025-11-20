@@ -394,6 +394,7 @@ def create_html_report(page_title, current_period_str, previous_period_str, df_b
 
     <footer>
         <p><a href="../../resources/how-to-read-the-performance-analysis-report.html">How to Read This Report</a></p>
+        <p><a href="https://github.com/liamdelahunty/gsc-exporter" target="_blank">gsc-exporter</a></p>
     </footer>
 </body>
 </html>
