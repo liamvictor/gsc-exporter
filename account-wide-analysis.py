@@ -238,7 +238,7 @@ def main():
         
     df = pd.DataFrame(all_data)
     
-    output_dir = 'output'
+    output_dir = os.path.join('output', 'account')
     os.makedirs(output_dir, exist_ok=True)
     
     most_recent_month = (today.replace(day=1) - timedelta(days=1)).strftime('%Y-%m')

@@ -307,7 +307,7 @@ def main():
     # Reindex the DataFrame to ensure the desired column order for CSV
     df = df.reindex(columns=csv_column_order)
     
-    output_dir = 'output'
+    output_dir = os.path.join('output', 'account')
     os.makedirs(output_dir, exist_ok=True)
     
     most_recent_month = (today.replace(day=1) - timedelta(days=1)).strftime('%Y-%m')

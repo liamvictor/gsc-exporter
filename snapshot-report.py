@@ -228,7 +228,7 @@ def main():
         host_plain = urlparse(site_url).netloc
     
     host_dir = host_plain.replace('www.', '')
-    output_dir = os.path.join('output', host_dir)
+    output_dir = os.path.join('output', 'account', host_dir)
     os.makedirs(output_dir, exist_ok=True)
     host_for_filename = host_dir.replace('.', '-')
 
