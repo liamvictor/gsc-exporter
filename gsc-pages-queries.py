@@ -80,10 +80,10 @@ def get_pages_queries_data(service, site_url, start_date, end_date):
 def create_html_report(data_df, site_url, start_date, end_date):
     """Generates an HTML report for pages and queries."""
     # Group by query
-    query_grouped = data_df.groupby('query').apply(lambda x: x.sort_values(by='clicks', ascending=False)).reset_index(drop=True)
+    query_grouped = data_df.groupby('query', group_keys=False).apply(lambda x: x.sort_values(by='clicks', ascending=False)).reset_index(drop=True)
     
     # Group by page
-    page_grouped = data_df.groupby('page').apply(lambda x: x.sort_values(by='clicks', ascending=False)).reset_index(drop=True)
+    page_grouped = data_df.groupby('page', group_keys=False).apply(lambda x: x.sort_values(by='clicks', ascending=False)).reset_index(drop=True)
 
     # --- HTML Generation ---
     html = f"""
@@ -161,7 +161,7 @@ def generate_accordion_html(grouped_df, primary_dim, secondary_dim):
         <div class="accordion-item">
             <h2 class="accordion-header" id="{header_id}">
                 <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#{collapse_id}">
-                    <strong>{primary_val}</strong>&nbsp;<span class="badge bg-primary rounded-pill ms-auto me-2">Clicks: {total_clicks:, .0f}</span><span class="badge bg-secondary rounded-pill me-2">Impressions: {total_impressions:, .0f}</span>
+                    <strong>{primary_val}</strong>&nbsp;<span class="badge bg-primary rounded-pill ms-auto me-2">Clicks: {total_clicks:,d}</span><span class="badge bg-secondary rounded-pill me-2">Impressions: {total_impressions:,d}</span>
                 </button>
             </h2>
             <div id="{collapse_id}" class="accordion-collapse collapse" data-bs-parent="#{accordion_id}">
