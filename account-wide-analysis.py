@@ -22,6 +22,7 @@ from datetime import datetime, date, timedelta
 from dateutil.relativedelta import relativedelta
 from urllib.parse import urlparse
 import argparse
+from functools import cmp_to_key
 
 # --- Configuration ---
 SCOPES = ['https://www.googleapis.com/auth/webmasters.readonly']
@@ -71,28 +72,27 @@ def get_monthly_performance_data(service, site_url, start_date, end_date):
         if 'rows' in response:
             return response['rows'][0]
     except HttpError as e:
+        if e.resp.status == 403:
+            print(f"Warning: Insufficient permission for site {site_url}. Skipping further monthly data for this property.")
+            return "PERMISSION_DENIED" # Special indicator
         print(f"An HTTP error occurred for site {site_url} from {start_date} to {end_date}: {e}")
     except Exception as e:
         print(f"An unexpected error occurred for site {site_url} from {start_date} to {end_date}: {e}")
     return None
 
-def create_html_report(df, sites):
+def create_html_report(df, sorted_sites):
     """Generates an HTML report from the analysis dataframe."""
     
     # Generate the index of sites
     index_html = '<ul>'
-    for site in sites:
-        site_id = site.replace(':', '').replace('/', '').replace('.', '-')
-        index_html += f'<li><a href="#{site_id}">{site}</a></li>'
+    for site in sorted_sites:
+        # Create a URL-friendly anchor link
+        anchor = site.replace('https://', '').replace('http://', '').replace(':', '-').replace('/', '-').replace('.', '-')
+        index_html += f'<li><a href="#{anchor}">{site}</a></li>'
     index_html += '</ul>'
 
-    # Generate the tables for each site
-    tables_html = ''
-    for site in sites:
-        site_id = site.replace(':', '').replace('/', '').replace('.', '-')
-        site_df = df[df['site_url'] == site]
-        tables_html += f'<h2 id="{site_id}" class="mt-5">{site}</h2>'
-        tables_html += site_df.to_html(classes="table table-striped table-hover", index=False, border=0)
+    # Generate the individual site sections
+    site_sections_html = generate_site_sections(df, sorted_sites)
 
     html_template = f"""
 <!DOCTYPE html>
@@ -105,7 +105,7 @@ def create_html_report(df, sites):
     <style>
         body {{ padding: 2rem; }}
         .table-responsive {{ max-height: 800px; overflow-y: auto; }}
-        h1, h2 {{ border-bottom: 2px solid #dee2e6; padding-bottom: 0.5rem; margin-top: 2rem; }}
+        h1, h2, h3 {{ border-bottom: 2px solid #dee2e6; padding-bottom: 0.5rem; margin-top: 2rem; }}
         footer {{ margin-top: 3rem; text-align: center; color: #6c757d; }}
         .table thead th {{ text-align: center; }}
     </style>
@@ -115,7 +115,7 @@ def create_html_report(df, sites):
         <h1 class="mb-3">Account-Wide GSC Performance Report</h1>
         <h2>Index</h2>
         {index_html}
-        {tables_html}
+        {site_sections_html}
     </div>
     <footer>
         <p><a href="https://github.com/liamdelahunty/gsc-exporter" target="_blank">gsc-exporter</a></p>
@@ -125,6 +125,53 @@ def create_html_report(df, sites):
 """
     return html_template
 
+def generate_site_sections(df, sorted_sites):
+    """Generates HTML sections for each site."""
+    sections_html = ''
+    for site in sorted_sites:
+        anchor = site.replace('https://', '').replace('http://', '').replace(':', '-').replace('/', '-').replace('.', '-')
+        sections_html += f'<h2 id="{anchor}" class="mt-5">{site}</h2>'
+        
+        site_df = df[df['site_url'] == site].drop(columns=['site_url'])
+        
+        if not site_df.empty:
+            sections_html += '<div class="table-responsive">'
+            sections_html += site_df.to_html(classes="table table-striped table-hover", index=False, border=0)
+            sections_html += '</div>'
+        else:
+            sections_html += '<p>No data available for this site.</p>'
+            
+    return sections_html
+
+def get_sort_key(site_url):
+    """Creates a sort key for a site URL based on the specified sorting rules."""
+    
+    # Rule 1: Extract root domain for primary sorting
+    if site_url.startswith('sc-domain:'):
+        root_domain = site_url.replace('sc-domain:', '')
+    else:
+        netloc = urlparse(site_url).netloc
+        parts = netloc.split('.')
+        if len(parts) > 2 and parts[-2] in ['co', 'com', 'org', 'net', 'gov', 'edu'] and len(parts[-3]) > 2:
+            root_domain = '.'.join(parts[-3:])
+        elif len(parts) > 2:
+            root_domain = '.'.join(parts[-2:])
+        else:
+            root_domain = netloc
+
+    # Rule 2 & 3: Prioritise sc-domain and www
+    if site_url.startswith('sc-domain:'):
+        order = 0
+        subdomain = ''
+    elif urlparse(site_url).netloc.startswith('www.'):
+        order = 1
+        subdomain = ''
+    else:
+        order = 2
+        subdomain = urlparse(site_url).netloc.split('.')[0]
+        
+    return (root_domain, order, subdomain)
+    
 def main():
     """Main function to run the account-wide analysis."""
     service = get_gsc_service()
@@ -136,14 +183,14 @@ def main():
         print("No sites found in your account.")
         return
 
+    sites.sort(key=get_sort_key)
+
     all_data = []
     today = date.today()
     
-    sorted_sites = sorted(sites)
-    
-    for site_url in sorted_sites:
+    for site_url in sites: # Iterate through the sorted list of sites
         print(f"\nFetching data for site: {site_url}")
-        for i in range(1, 17):
+        for i in range(1, 17): # Last 16 months
             end_of_month = today.replace(day=1) - relativedelta(months=i-1) - timedelta(days=1)
             start_of_month = end_of_month.replace(day=1)
             
@@ -152,7 +199,9 @@ def main():
 
             data = get_monthly_performance_data(service, site_url, start_date, end_date)
             
-            if data:
+            if data == "PERMISSION_DENIED":
+                break # Stop processing months for this site
+            elif data:
                 all_data.append({
                     'site_url': site_url,
                     'month': start_of_month.strftime('%Y-%m'),
@@ -184,12 +233,13 @@ def main():
         df.to_csv(csv_output_path, index=False)
         print(f"\nSuccessfully exported CSV to {csv_output_path}")
 
-        # Format the dataframe for better readability in HTML
-        df['ctr'] = df['ctr'].apply(lambda x: f"{x:.2%}")
-        df['position'] = df['position'].apply(lambda x: f"{x:.2f}")
+        # Create a deep copy for HTML formatting
+        html_df = df.copy()
+        html_df['ctr'] = html_df['ctr'].apply(lambda x: f"{x:.2%}")
+        html_df['position'] = html_df['position'].apply(lambda x: f"{x:.2f}")
 
         # Generate and save HTML report
-        html_output = create_html_report(df, sorted_sites)
+        html_output = create_html_report(html_df, sites)
         with open(html_output_path, 'w', encoding='utf-8') as f:
             f.write(html_output)
         print(f"Successfully created HTML report at {html_output_path}")
