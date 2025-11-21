@@ -251,3 +251,29 @@ The HTML report is structured to provide an easy-to-navigate overview:
         *   `www.` versions of the root domain are listed second.
         *   All other subdomains are listed alphabetically.
 
+---
+
+## Query Position Distribution Analysis
+
+The `query-position-analysis.py` script extends the account-wide analysis by focusing on the distribution of query positions across your Google Search Console properties. Instead of just an average position, this report breaks down clicks and impressions into predefined position ranges (e.g., positions 1-3, 4-10, 11-20, 21+). This offers a more granular understanding of where your sites appear in search results.
+
+### Usage
+
+Run the script from the command line:
+
+```bash
+python query-position-analysis.py
+```
+
+### Output
+
+The script generates two files in the `output/` directory:
+
+1.  **`query-position-performance-[...].csv`**: A CSV file containing the monthly clicks and impressions for each position range across all sites.
+2.  **`query-position-performance-[...].html`**: An HTML report that summarises the query position distribution for each site.
+
+The HTML report structure is similar to the Account-Wide Analysis report, featuring:
+
+*   **Interactive Index**: An index at the top lists all analysed sites, with clickable links to their respective data sections.
+*   **Structured by Site**: Data sections are separated for each site.
+*   **Intelligent Sorting**: Sites are sorted alphabetically by hostname, then subdomain, with `sc-domain:` properties listed first, `www.` versions second, and other subdomains alphabetically.
