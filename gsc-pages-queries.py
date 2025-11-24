@@ -99,6 +99,8 @@ def create_html_report(data_df, site_url, start_date, end_date):
         body {{ padding: 2rem; }}
         .table-responsive {{ max-height: 500px; }}
         .accordion-button:not(.collapsed) {{ background-color: #e7f1ff; }}
+        .table th:not(:first-child), .table td:not(:first-child) {{ text-align: right; }}
+        .table th:first-child, .table td:first-child {{ text-align: left; }}
     </style>
 </head>
 <body>
@@ -155,13 +157,24 @@ def generate_accordion_html(grouped_df, primary_dim, secondary_dim):
         sub_group = grouped_df[grouped_df[primary_dim] == primary_val]
         
         # Format the sub-table
-        sub_group_html = sub_group[[secondary_dim, 'clicks', 'impressions', 'ctr', 'position']].to_html(classes="table table-sm table-striped", index=False, border=0)
+        formatters = {
+            'clicks': lambda x: f'{x:,d}',
+            'impressions': lambda x: f'{x:,d}'
+        }
+        sub_group_html = sub_group[[secondary_dim, 'clicks', 'impressions', 'ctr', 'position']].to_html(
+            classes="table table-sm table-striped",
+            index=False,
+            border=0,
+            formatters=formatters
+        )
 
         html += f"""
         <div class="accordion-item">
             <h2 class="accordion-header" id="{header_id}">
                 <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#{collapse_id}">
-                    <strong>{primary_val}</strong>&nbsp;<span class="badge bg-primary rounded-pill ms-auto me-2">Clicks: {total_clicks:,d}</span><span class="badge bg-secondary rounded-pill me-2">Impressions: {total_impressions:,d}</span>
+                    <strong>{primary_val}</strong>&nbsp;
+                    <span class="badge bg-primary p-3 ms-auto me-2">Clicks: {total_clicks:,d}</span>
+                    <span class="badge bg-secondary p-3 me-2">Impressions: {total_impressions:,d}</span>
                 </button>
             </h2>
             <div id="{collapse_id}" class="accordion-collapse collapse" data-bs-parent="#{accordion_id}">
