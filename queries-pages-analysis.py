@@ -18,6 +18,7 @@ from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
+from google.auth import exceptions
 from datetime import datetime, date, timedelta
 from dateutil.relativedelta import relativedelta
 from urllib.parse import urlparse
@@ -32,19 +33,42 @@ TOKEN_FILE = 'token.json'
 def get_gsc_service():
     """Authenticates and returns a Google Search Console service object."""
     creds = None
+    # 1. Try to load existing credentials
     if os.path.exists(TOKEN_FILE):
-        creds = Credentials.from_authorized_user_file(TOKEN_FILE, SCOPES)
+        try:
+            creds = Credentials.from_authorized_user_file(TOKEN_FILE, SCOPES)
+        except Exception as e:
+            print(f"Could not load credentials from {TOKEN_FILE}. Error: {e}")
+            print("Will attempt to re-authenticate.")
+            creds = None
+
+    # 2. If there are no credentials or they are invalid, refresh or re-authenticate
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-        else:
+            try:
+                print("Credentials have expired. Attempting to refresh...")
+                creds.refresh(Request())
+            except exceptions.RefreshError as e:
+                print(f"Error refreshing token: {e}")
+                print("The refresh token is expired or revoked. Deleting it and re-authenticating.")
+                if os.path.exists(TOKEN_FILE):
+                    os.remove(TOKEN_FILE)
+                creds = None  # Force re-authentication
+        
+        if not creds:
             if not os.path.exists(CLIENT_SECRET_FILE):
-                print(f"Error: {CLIENT_SECRET_FILE} not found.")
+                print(f"Error: {CLIENT_SECRET_FILE} not found. Please follow setup instructions in README.md.")
                 return None
+            
+            print("A browser window will open for you to authorize access.")
             flow = InstalledAppFlow.from_client_secrets_file(CLIENT_SECRET_FILE, SCOPES)
             creds = flow.run_local_server(port=0)
+        
+        # Save the new or refreshed credentials for the next run
         with open(TOKEN_FILE, 'w') as token:
             token.write(creds.to_json())
+            print("Authentication successful. Credentials saved.")
+
     return build('webmasters', 'v3', credentials=creds)
 
 def get_all_sites(service):
