@@ -104,10 +104,10 @@ def get_pages_queries_data(service, site_url, start_date, end_date):
 def create_html_report(data_df, site_url, start_date, end_date):
     """Generates an HTML report for pages and queries."""
     # Group by query
-    query_grouped = data_df.groupby('query', group_keys=False).apply(lambda x: x.sort_values(by='clicks', ascending=False)).reset_index(drop=True)
+    query_grouped = data_df.sort_values(by=['query', 'clicks'], ascending=[True, False]).reset_index(drop=True)
     
     # Group by page
-    page_grouped = data_df.groupby('page', group_keys=False).apply(lambda x: x.sort_values(by='clicks', ascending=False)).reset_index(drop=True)
+    page_grouped = data_df.sort_values(by=['page', 'clicks'], ascending=[True, False]).reset_index(drop=True)
 
     # --- HTML Generation ---
     html = f"""
