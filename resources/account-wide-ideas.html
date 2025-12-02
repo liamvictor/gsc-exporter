@@ -36,6 +36,48 @@
 			<p>Distribution: Instead of just average position, show the distribution of queries by position ranges (e.g., top 3, 4-10, 11-20, etc.) for each site.     </p>
 		</ul>
 
+<ul>
+ <li>For performance-analysis.py</li>
+ <p>This script's API request is hardcoded to the page dimension, so only page-based filters are appropriate without changing the core script logic.</p>
+
+   <ul>
+   <li><code> `--page-contains &lt;substring&gt;`:
+       * Use Case: Analyse performance changes just for pages within a specific section of your site, like /blog/ or /products/.
+       * Example: py performance-analysis.py &lt;site&gt; --last-28-days --page-contains "/blog/"
+   * `--page-exact &lt;url&gt;`:
+       * Use Case: Get a performance comparison for a single, specific URL.
+       * Example: py performance-analysis.py &lt;site&gt; --last-7-days --page-exact "https://example.com/my-article"
+   * `--page-not-contains &lt;substring&gt;`:
+       * Use Case: Exclude a section of your site from the analysis, for example, to see performance excluding /login/ pages.
+       * Example: py performance-analysis.py &lt;site&gt; --last-month --page-not-contains "/login/"
+
+  > Note: To filter by query in this script, its logic would need to be updated to also request the query dimension from the API.
+
+  ---
+
+  For gsc-pages-queries.py & snapshot-report.py
+
+  These scripts fetch (or could fetch) both page and query dimensions, making them ideal candidates for a wide range of filters.
+
+  Query-based Filters:
+
+   * `--query-contains <substring>`:
+       * Use Case: Focus the report on a specific topic, keyword group, or brand name.
+       * Example: py gsc-pages-queries.py <site> --last-28-days --query-contains "brand name"
+   * `--query-exact <phrase>`:
+       * Use Case: Analyse performance for a single, exact-match keyword.
+       * Example: py gsc-pages-queries.py <site> --last-28-days --query-exact "how to bake bread"
+   * `--query-not-contains <substring>`:
+       * Use Case: The most common use is to exclude brand terms to analyse purely non-branded/organic discovery traffic.
+       * Example: py gsc-pages-queries.py <site> --last-28-days --query-not-contains "brand name"
+
+  Page-based Filters (same as above):
+
+   * --page-contains <substring>
+   * --page-exact <url>
+   * --page-not-contains <substring>
+
+
 	<footer>
         <p><a href="index.html">Back to Resources</a> | <a href="https://github.com/liamdelahunty/gsc-exporter" target="_blank">gsc-exporter</a></p>
     </footer>

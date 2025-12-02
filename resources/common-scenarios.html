@@ -25,7 +25,7 @@
         <div class="scenario">
             <h3>Goal: Compare this week's performance to last week's.</h3>
             <p><strong>Script:</strong> <code>performance-analysis.py</code></p>
-            <p>This script is designed specifically for comparing two time periods.</p>
+            <p>This script is designed specifically for comparing two time periods. You can add filtering flags (e.g., <code>--page-contains</code> or <code>--query-contains</code>) to narrow the analysis.</p>
             <h6>Command:</h6>
             <pre><code>py performance-analysis.py https://www.example.com --last-7-days</code></pre>
             <div class="action">
@@ -43,7 +43,7 @@
         <div class="scenario">
             <h3>Goal: Compare last month's performance to the same month last year.</h3>
             <p><strong>Script:</strong> <code>performance-analysis.py</code></p>
-            <p>The performance analysis script has a special flag for year-over-year comparisons.</p>
+            <p>The performance analysis script has a special flag for year-over-year comparisons. You can also add filters to narrow down the analysis.</p>
             <h6>Command:</h6>
             <pre><code>py performance-analysis.py https://www.example.com --last-month --compare-to-previous-year</code></pre>
             <div class="action">
@@ -51,6 +51,24 @@
                 <ol>
                     <li>The <code>--compare-to-previous-year</code> flag tells the script to use the same date range from the previous year as the comparison period.</li>
                     <li>Open the report to see how your top pages have trended compared to twelve months ago, which is great for identifying seasonality and long-term growth.</li>
+                </ol>
+            </div>
+        </div>
+
+        <!-- New Scenario -->
+        <div class="scenario">
+            <h3>Goal: Analyse performance for a specific site section, excluding brand queries.</h3>
+            <p><strong>Script:</strong> <code>performance-analysis.py</code></p>
+            <p>Combine filtering flags to create a highly specific analysis. This is one of the most powerful features of the script.</p>
+            <h6>Command:</h6>
+            <pre><code>py performance-analysis.py https://www.example.com --last-28-days --page-contains "/blog/" --query-not-contains "brand name"</code></pre>
+            <div class="action">
+                <strong>Action:</strong>
+                <ol>
+                    <li>This command runs a performance analysis for the last 28 days.</li>
+                    <li><code>--page-contains "/blog/"</code> limits the analysis to only your blog pages.</li>
+                    <li><code>--query-not-contains "brand name"</code> removes all brand-related queries, focusing on pure organic discovery.</li>
+                    <li>The resulting report shows the top performing non-branded content in your blog section, which is invaluable for content strategy.</li>
                 </ol>
             </div>
         </div>

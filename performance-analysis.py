@@ -6,10 +6,11 @@ different time periods, compares them, and generates a report highlighting best/
 performing pages and pages with low CTR.
 
 Usage:
-    python performance-analysis.py <site_url> [comparison_flag]
+    python performance-analysis.py <site_url> [comparison_flag] [filter_flags]
 
-Example:
-    python performance-analysis.py https://www.example.com --compare-last-28-days
+Examples:
+    python performance-analysis.py https://www.example.com --last-28-days
+    python performance-analysis.py https://www.example.com --last-7-days --query-contains "brand name"
 """
 import os
 import pandas as pd
