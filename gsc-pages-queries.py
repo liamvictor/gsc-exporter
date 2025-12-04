@@ -103,12 +103,7 @@ def get_pages_queries_data(service, site_url, start_date, end_date):
 
 def create_html_report(data_df, site_url, start_date, end_date, report_limit, sub_table_limit):
     """Generates an HTML report for pages and queries."""
-    # Group by query
-    query_grouped = data_df.sort_values(by=['query', 'clicks'], ascending=[True, False]).reset_index(drop=True)
     
-    # Group by page
-    page_grouped = data_df.sort_values(by=['page', 'clicks'], ascending=[True, False]).reset_index(drop=True)
-
     # --- Truncation Alert ---
     query_count = data_df['query'].nunique()
     page_count = data_df['page'].nunique()
@@ -127,7 +122,55 @@ def create_html_report(data_df, site_url, start_date, end_date, report_limit, su
         </div>
         """
 
-    # --- HTML Generation ---
+    # --- HTML Structure ---
+    # Prepare data based on whether brand classification exists
+    has_brand_classification = 'brand_type' in data_df.columns
+
+    if has_brand_classification:
+        non_brand_df = data_df[data_df['brand_type'] == 'Non-Brand'].sort_values(by=['query', 'clicks'], ascending=[True, False]).reset_index(drop=True)
+        brand_df = data_df[data_df['brand_type'] == 'Brand'].sort_values(by=['query', 'clicks'], ascending=[True, False]).reset_index(drop=True)
+        all_queries_df = data_df.sort_values(by=['query', 'clicks'], ascending=[True, False]).reset_index(drop=True)
+        
+        # The 'Pages to Queries' data does not get brand-classified in this version
+        page_grouped = data_df.sort_values(by=['page', 'clicks'], ascending=[True, False]).reset_index(drop=True)
+
+        query_tabs = """
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="non-brand-tab" data-bs-toggle="tab" data-bs-target="#non-brand-queries" type="button" role="tab">Non-Brand Queries</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="brand-tab" data-bs-toggle="tab" data-bs-target="#brand-queries" type="button" role="tab">Brand Queries</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="all-queries-tab" data-bs-toggle="tab" data-bs-target="#all-queries" type="button" role="tab">All Queries</button>
+            </li>
+        """
+        query_tab_content = f"""
+            <div class="tab-pane fade show active" id="non-brand-queries" role="tabpanel">
+                {generate_accordion_html(non_brand_df, 'query', 'page', report_limit, sub_table_limit)}
+            </div>
+            <div class="tab-pane fade" id="brand-queries" role="tabpanel">
+                {generate_accordion_html(brand_df, 'query', 'page', report_limit, sub_table_limit)}
+            </div>
+            <div class="tab-pane fade" id="all-queries" role="tabpanel">
+                {generate_accordion_html(all_queries_df, 'query', 'page', report_limit, sub_table_limit)}
+            </div>
+        """
+    else:
+        query_grouped = data_df.sort_values(by=['query', 'clicks'], ascending=[True, False]).reset_index(drop=True)
+        page_grouped = data_df.sort_values(by=['page', 'clicks'], ascending=[True, False]).reset_index(drop=True)
+        query_tabs = """
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="queries-tab" data-bs-toggle="tab" data-bs-target="#queries" type="button" role="tab">Queries to Pages</button>
+            </li>
+        """
+        query_tab_content = f"""
+            <div class="tab-pane fade show active" id="queries" role="tabpanel">
+                {generate_accordion_html(query_grouped, 'query', 'page', report_limit, sub_table_limit)}
+            </div>
+        """
+
+    # --- Final HTML Assembly ---
     html = f"""
 <!DOCTYPE html>
 <html lang="en">
@@ -156,18 +199,14 @@ def create_html_report(data_df, site_url, start_date, end_date, report_limit, su
         {alert_html}
 
         <ul class="nav nav-tabs" id="myTab" role="tablist">
-            <li class="nav-item" role="presentation">
-                <button class="nav-link active" id="queries-tab" data-bs-toggle="tab" data-bs-target="#queries" type="button" role="tab">Queries to Pages</button>
-            </li>
+            {query_tabs}
             <li class="nav-item" role="presentation">
                 <button class="nav-link" id="pages-tab" data-bs-toggle="tab" data-bs-target="#pages" type="button" role="tab">Pages to Queries</button>
             </li>
         </ul>
 
         <div class="tab-content" id="myTabContent">
-            <div class="tab-pane fade show active" id="queries" role="tabpanel">
-                {generate_accordion_html(query_grouped, 'query', 'page', report_limit, sub_table_limit)}
-            </div>
+            {query_tab_content}
             <div class="tab-pane fade" id="pages" role="tabpanel">
                 {generate_accordion_html(page_grouped, 'page', 'query', report_limit, sub_table_limit)}
             </div>
@@ -253,6 +292,50 @@ def generate_accordion_html(grouped_df, primary_dim, secondary_dim, report_limit
     html += '</div>'
     return html
 
+def get_brand_terms(site_url):
+    """
+    Automatically extracts a set of likely brand terms from a site URL.
+
+    Args:
+        site_url (str): The URL of the site.
+
+    Returns:
+        set: A set of guessed brand terms.
+    """
+    if not site_url or site_url == "Loaded from CSV":
+        return set()
+        
+    hostname = urlparse(site_url).hostname
+    if not hostname:
+        return set()
+
+    # A list of common public suffixes to remove.
+    # This is a simplified approach. A more robust solution might use a library
+    # like tldextract, but this avoids adding a new dependency.
+    suffixes_to_remove = ['.com', '.co.uk', '.org', '.net', '.gov', '.edu', '.io', '.co']
+    
+    # Remove 'www.' prefix
+    if hostname.startswith('www.'):
+        hostname = hostname[4:]
+        
+    # Iteratively remove suffixes
+    for suffix in sorted(suffixes_to_remove, key=len, reverse=True):
+        if hostname.endswith(suffix):
+            hostname = hostname[:-len(suffix)]
+            break # Stop after the first, longest match
+            
+    if not hostname:
+        return set()
+
+    # Generate variations
+    terms = {hostname}
+    if '-' in hostname:
+        terms.add(hostname.replace('-', ' '))
+        terms.add(hostname.replace('-', ''))
+        
+    print(f"Auto-detected brand terms: {terms}")
+    return terms
+
 def main():
     """Main function to run the script."""
     parser = argparse.ArgumentParser(
@@ -289,6 +372,8 @@ def main():
     parser.add_argument('--use-cache', action='store_true', help='Use a cached CSV file from a previous run if it exists.')
     parser.add_argument('--report-limit', type=int, default=250, help='Maximum number of primary items (queries/pages) to include in the HTML report. Default is 250.')
     parser.add_argument('--sub-table-limit', type=int, default=100, help='Maximum number of sub-items (pages/queries) to display in each section of the HTML report. Default is 100.')
+    parser.add_argument('--no-brand-detection', action='store_true', help='Disable the automatic brand term detection.')
+    parser.add_argument('--brand-terms', nargs='+', help='A list of additional brand terms to include in the analysis.')
     
     args = parser.parse_args()
 
@@ -427,6 +512,23 @@ def main():
 
     # --- Generate and Save HTML Report ---
     if df is not None:
+        brand_terms = set()
+        # Auto-detect brand terms by default
+        if not args.no_brand_detection:
+            # site_url might be "Loaded from CSV", so we use args.site_url which is the original input
+            brand_terms.update(get_brand_terms(args.site_url or site_url))
+
+        # Add manually specified brand terms
+        if args.brand_terms:
+            brand_terms.update(term.lower() for term in args.brand_terms)
+        
+        # Classify queries if we have brand terms
+        if brand_terms:
+            print(f"Classifying queries with brand terms: {brand_terms}")
+            # Create a regex pattern to find any of the brand terms as whole words
+            pattern = r'\b(' + '|'.join(brand_terms) + r')\b'
+            df['brand_type'] = df['query'].str.contains(pattern, case=False, regex=True).map({True: 'Brand', False: 'Non-Brand'})
+
         # Format for HTML report
         html_df = df.copy()
         # Ensure required columns exist before formatting
@@ -444,6 +546,7 @@ def main():
             print(f"Error writing HTML to file: {e}")
     else:
         print("No data available to generate a report.")
+
 
 
 if __name__ == '__main__':

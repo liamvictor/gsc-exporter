@@ -103,30 +103,35 @@ A data source is required. You must specify either `<site_url>` (positional argu
 *   **Report Size**:
     *   `--report-limit <number>`: Sets the maximum number of top-level items (e.g., queries or pages) to include in the HTML report. Defaults to 250.
     *   `--sub-table-limit <number>`: Sets the maximum number of rows to display within each accordion's sub-table. Defaults to 100.
+*   **Brand Analysis**:
+    *   By default, the script automatically detects brand terms from the site URL and classifies queries containing them as "Brand".
+    *   `--brand-terms <term1> <term2> ...`: Specify a list of custom brand terms. These are added to the auto-detected terms.
+    *   `--no-brand-detection`: Disables the brand vs. non-brand classification entirely.
 
 ### Example Workflow
 
-1.  **Initial Download:** Run a large query to get all the data you need and save it.
+1.  **Initial Download:** Run a large query to get all the data you need and save it. The script will automatically classify brand/non-brand queries based on the domain name.
     ```bash
     python gsc-pages-queries.py https://www.example.com --last-12-months
     ```
-    This creates a CSV file in the `output/` directory.
+    This creates a CSV file and a detailed HTML report with Non-Brand, Brand, and All Queries tabs.
 
 2.  **Generate a Limited Report from Cache:** Now, quickly generate a smaller HTML report from the data you just saved without hitting the API again.
     ```bash
     python gsc-pages-queries.py https://www.example.com --last-12-months --use-cache --report-limit 50
     ```
-    The `--use-cache` flag finds and uses the CSV from the previous step. The output is an HTML report with only the top 50 items.
+    The `--use-cache` flag finds and uses the CSV from the previous step. The output is an HTML report with only the top 50 items in each tab.
 
 ### Output
 
 Generates a CSV file (if downloading data) and an interactive HTML report.
 
-The HTML report has two tabs:
-1.  **Queries to Pages**: An accordion list of queries. Each can be expanded to show the pages it sends traffic to.
-2.  **Pages to Queries**: An accordion list of pages. Each can be expanded to show the queries that drive traffic to it.
+By default, the HTML report includes automatic brand-detection and has three tabs for query analysis:
+1.  **Non-Brand Queries**: An accordion list of queries that do not contain brand terms.
+2.  **Brand Queries**: An accordion list of queries that contain brand terms.
+3.  **All Queries**: A combined view of all queries.
 
-If the report is truncated using the limit flags, a notification will appear at the top of the report.
+It also includes the original **Pages to Queries** tab. If brand detection is disabled, the report reverts to the original two-tab format.
 
 
 ---
