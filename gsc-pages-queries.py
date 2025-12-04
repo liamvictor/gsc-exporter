@@ -20,6 +20,7 @@ from google.auth import exceptions
 from datetime import datetime, date, timedelta
 from dateutil.relativedelta import relativedelta
 from urllib.parse import urlparse
+import re
 import argparse
 
 # --- Configuration ---
@@ -526,7 +527,8 @@ def main():
         if brand_terms:
             print(f"Classifying queries with brand terms: {brand_terms}")
             # Create a regex pattern to find any of the brand terms as whole words
-            pattern = r'\b(' + '|'.join(brand_terms) + r')\b'
+            # Use (?:...) for non-capturing group and re.escape for safety
+            pattern = r'\b(?:' + '|'.join(re.escape(term) for term in brand_terms) + r')\b'
             df['brand_type'] = df['query'].str.contains(pattern, case=False, regex=True).map({True: 'Brand', False: 'Non-Brand'})
 
         # Format for HTML report
