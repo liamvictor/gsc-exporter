@@ -244,6 +244,11 @@ def main():
     parser.add_argument('--end-date', help='End date in YYYY-MM-DD format. Used only with --start-date.')
     
     args = parser.parse_args()
+
+    # Add a correction for common typos in the site URL
+    if 'wwww.' in args.site_url:
+        args.site_url = args.site_url.replace('wwww.', 'www.')
+    
     
     today = date.today()
 
