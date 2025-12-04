@@ -101,13 +101,31 @@ def get_pages_queries_data(service, site_url, start_date, end_date):
             return None
     return all_data
 
-def create_html_report(data_df, site_url, start_date, end_date):
+def create_html_report(data_df, site_url, start_date, end_date, report_limit, sub_table_limit):
     """Generates an HTML report for pages and queries."""
     # Group by query
     query_grouped = data_df.sort_values(by=['query', 'clicks'], ascending=[True, False]).reset_index(drop=True)
     
     # Group by page
     page_grouped = data_df.sort_values(by=['page', 'clicks'], ascending=[True, False]).reset_index(drop=True)
+
+    # --- Truncation Alert ---
+    query_count = data_df['query'].nunique()
+    page_count = data_df['page'].nunique()
+    is_truncated = query_count > report_limit or page_count > report_limit
+
+    alert_html = ""
+    if is_truncated:
+        alert_html = f"""
+        <div class="alert alert-info">
+            <strong>Report Truncated:</strong> To improve performance, this HTML report has been shortened.
+            <ul>
+                <li>The report is limited to the top <strong>{report_limit}</strong> primary items (queries/pages) by clicks.</li>
+                <li>Each table within an item is limited to its top <strong>{sub_table_limit}</strong> rows.</li>
+            </ul>
+            The full, unfiltered data is available in the accompanying CSV file. You can adjust these limits using the <code>--report-limit</code> and <code>--sub-table-limit</code> flags.
+        </div>
+        """
 
     # --- HTML Generation ---
     html = f"""
@@ -135,6 +153,8 @@ def create_html_report(data_df, site_url, start_date, end_date):
         <h2>{site_url}</h2>
         <p class="text-muted">{start_date} to {end_date}</p>
 
+        {alert_html}
+
         <ul class="nav nav-tabs" id="myTab" role="tablist">
             <li class="nav-item" role="presentation">
                 <button class="nav-link active" id="queries-tab" data-bs-toggle="tab" data-bs-target="#queries" type="button" role="tab">Queries to Pages</button>
@@ -146,10 +166,10 @@ def create_html_report(data_df, site_url, start_date, end_date):
 
         <div class="tab-content" id="myTabContent">
             <div class="tab-pane fade show active" id="queries" role="tabpanel">
-                {generate_accordion_html(query_grouped, 'query', 'page')}
+                {generate_accordion_html(query_grouped, 'query', 'page', report_limit, sub_table_limit)}
             </div>
             <div class="tab-pane fade" id="pages" role="tabpanel">
-                {generate_accordion_html(page_grouped, 'page', 'query')}
+                {generate_accordion_html(page_grouped, 'page', 'query', report_limit, sub_table_limit)}
             </div>
         </div>
     </div>
@@ -158,7 +178,7 @@ def create_html_report(data_df, site_url, start_date, end_date):
     """
     return html
 
-def generate_accordion_html(grouped_df, primary_dim, secondary_dim):
+def generate_accordion_html(grouped_df, primary_dim, secondary_dim, report_limit, sub_table_limit):
     """Generates Bootstrap accordion HTML for the grouped data."""
     accordion_id = f"accordion-{primary_dim}"
     html = f'<div class="accordion mt-3" id="{accordion_id}">'
@@ -169,8 +189,14 @@ def generate_accordion_html(grouped_df, primary_dim, secondary_dim):
         total_impressions=('impressions', 'sum')
     ).sort_values(by='total_clicks', ascending=False).reset_index()
 
+    # Limit the number of primary items based on the report_limit
+    if len(primary_totals) > report_limit:
+        print(f"Report will be truncated to the top {report_limit} {primary_dim}s based on clicks.")
+    
+    limited_primary_totals = primary_totals.head(report_limit)
+
     item_count = 0
-    for index, row in primary_totals.iterrows():
+    for index, row in limited_primary_totals.iterrows():
         primary_val = row[primary_dim]
         total_clicks = row['total_clicks']
         total_impressions = row['total_impressions']
@@ -180,7 +206,8 @@ def generate_accordion_html(grouped_df, primary_dim, secondary_dim):
         header_id = f"header-{primary_dim}-{item_count}"
         
         # Get the subgroup for the current primary dimension value
-        sub_group = grouped_df[grouped_df[primary_dim] == primary_val]
+        sub_group_full = grouped_df[grouped_df[primary_dim] == primary_val]
+        sub_group = sub_group_full.head(sub_table_limit)
         
         # Format the sub-table
         formatters = {
@@ -193,6 +220,11 @@ def generate_accordion_html(grouped_df, primary_dim, secondary_dim):
             border=0,
             formatters=formatters
         )
+
+        # Add a note if the sub-table is truncated
+        if len(sub_group_full) > len(sub_group):
+            sub_group_html += f"<p class='text-muted mt-2'>Showing top {sub_table_limit} of {len(sub_group_full):,} {secondary_dim}s, sorted by clicks.</p>"
+
 
         html += f"""
         <div class="accordion-item">
@@ -217,9 +249,6 @@ def generate_accordion_html(grouped_df, primary_dim, secondary_dim):
         </div>
         """
         item_count += 1
-        if item_count >= 1000: # Limit to 1000 items for performance
-            html += '<div>...and more...</div>'
-            break
 
     html += '</div>'
     return html
@@ -242,6 +271,8 @@ def main():
     date_group.add_argument('--last-16-months', action='store_true', help='Set date range to the last 16 months.')
     
     parser.add_argument('--end-date', help='End date in YYYY-MM-DD format. Used only with --start-date.')
+    parser.add_argument('--report-limit', type=int, default=250, help='Maximum number of primary items (queries/pages) to include in the HTML report. Default is 250.')
+    parser.add_argument('--sub-table-limit', type=int, default=100, help='Maximum number of sub-items (pages/queries) to display in each section of the HTML report. Default is 100.')
     
     args = parser.parse_args()
 
@@ -341,7 +372,7 @@ def main():
         html_df['ctr'] = html_df['ctr'].apply(lambda x: f"{x:.2%}")
         html_df['position'] = html_df['position'].apply(lambda x: f"{x:.2f}")
 
-        html_report = create_html_report(html_df, args.site_url, start_date, end_date)
+        html_report = create_html_report(html_df, args.site_url, start_date, end_date, args.report_limit, args.sub_table_limit)
         try:
             with open(html_output_path, 'w', encoding='utf-8') as f:
                 f.write(html_report)

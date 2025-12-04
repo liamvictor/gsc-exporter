@@ -78,11 +78,14 @@ Generates a detailed report showing the relationship between queries and the pag
 ### Usage
 
 ```bash
-python gsc-pages-queries.py <site_url> [date_range_option]
+python gsc-pages-queries.py <site_url> [date_range_option] [options]
 ```
 
 *   `<site_url>`: (Required) The full URL of the site property or a domain property.
 *   **Date Range Options**: Options like `--last-7-days`, `--last-month`, `--last-12-months`, etc., are available. If omitted, it defaults to the last full calendar month.
+*   **Report Size Options**:
+    *   `--report-limit <number>`: Sets the maximum number of top-level items (e.g., queries or pages) to include in the HTML report. Defaults to 250.
+    *   `--sub-table-limit <number>`: Sets the maximum number of rows to display within each accordion's sub-table. Defaults to 100.
 
 ### Output
 
@@ -92,7 +95,8 @@ The HTML report has two tabs:
 1.  **Queries to Pages**: An accordion list of all queries. Each query can be expanded to show the specific pages it sends traffic to, along with clicks, impressions, CTR, and position for each page.
 2.  **Pages to Queries**: An accordion list of all pages. Each page can be expanded to show the queries that drive traffic to it.
 
-The report's tables are formatted for readability, with right-aligned numeric columns and thousand separators for large numbers.
+The report's tables are formatted for readability, with right-aligned numeric columns and thousand separators for large numbers. If the report is truncated using the limit flags, a notification will appear in the report.
+
 
 ---
 

@@ -45,6 +45,16 @@
         </ol>
         <p>Both tabs use an interactive accordion. The main entries (either queries or pages) are sorted by the total number of clicks they received. The data tables within each section are formatted for clarity, with right-aligned numeric columns and thousands separators on large numbers to make them easier to read.</p>
 
+        <h2>A Note on Report Size</h2>
+        <div class="alert alert-info">
+            <p>For performance, especially with large sites or long date ranges, the HTML report may be automatically truncated.</p>
+            <ul>
+                <li>The number of main accordion items (e.g., queries) is limited (defaults to 250).</li>
+                <li>The table inside each accordion is also limited (defaults to the top 100 rows).</li>
+            </ul>
+            <p>If the report has been truncated, a notification will appear at the bottom. You can use the <code>--report-limit</code> and <code>--sub-table-limit</code> flags when running the script to control these limits. The full, untruncated data is always available in the accompanying CSV file.</p>
+        </div>
+
         <h2>Queries to Pages Tab</h2>
         <p>This tab helps you understand the user intent behind search queries and which pages on your site are meeting that intent.</p>
         <ul>
