@@ -1,13 +1,13 @@
 """
-Performs an account-wide or single-site analysis of Google Search Console data,
-gathering key performance metrics for the last complete calendar month.
+Generates a summary report of Google Search Console performance data for various
+date ranges, including an option to process all complete months over the last 16 months.
 
-This script authenticates with the GSC API. It can either process all sites in an
-account or a specific site URL provided as an argument. For each site, it retrieves
-clicks, impressions, CTR, average position, and unique query/page counts for the
-last complete calendar month.
+This script authenticates with the GSC API and can run for a single site or all
+sites in an account. It retrieves clicks, impressions, CTR, average position, and
+unique query/page counts. It uses pagination to get a more accurate count of
+queries and pages.
 
-The data is compiled into a CSV file and an HTML report.
+The data is compiled into a CSV and a themed HTML report for each date range processed.
 """
 
 import os
@@ -333,8 +333,21 @@ def get_sort_key(site_url):
 
 def main():
     """Main function to run the analysis."""
-    parser = argparse.ArgumentParser(description='Run a monthly queries/pages analysis for a GSC property.')
-    parser.add_argument('site_url', nargs='?', default=None, help='The URL of the site to analyse. If not provided, runs for all sites.')
+    parser = argparse.ArgumentParser(
+        description='Run a monthly summary report for GSC properties.',
+        formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    parser.add_argument('site_url', nargs='?', default=None, help='Optional: The URL of the site to analyse. If not provided, runs for all sites.')
+    
+    date_group = parser.add_mutually_exclusive_group()
+    date_group.add_argument('--all-months', action='store_true', help='Generate a separate report for each of the last 16 complete months.')
+    date_group.add_argument('--start-date', help='Start date in YYYY-MM-DD format.')
+    date_group.add_argument('--last-7-days', action='store_true', help='Set date range to the last 7 days.')
+    date_group.add_argument('--last-28-days', action='store_true', help='Set date range to the last 28 days.')
+    date_group.add_argument('--last-month', action='store_true', help='Set date range to the last calendar month (this is the default).')
+    
+    parser.add_argument('--end-date', help='End date in YYYY-MM-DD format. Used only with --start-date.')
+    
     args = parser.parse_args()
 
     service = get_gsc_service()
@@ -349,70 +362,84 @@ def main():
             print("No sites found in your account.")
             return
         sites.sort(key=get_sort_key)
-
-    all_data = []
+    
     today = date.today()
+    date_ranges = []
 
-    for site_url in sites:
-        print(f"\nFetching data for site: {site_url}")
-        for i in range(1, 2):
+    if args.all_months:
+        for i in range(1, 17):
             end_of_month = today.replace(day=1) - relativedelta(months=i - 1) - timedelta(days=1)
             start_of_month = end_of_month.replace(day=1)
-            start_date = start_of_month.strftime('%Y-%m-%d')
-            end_date = end_of_month.strftime('%Y-%m-%d')
-            
-            print(f"  - Fetching data for {start_of_month.strftime('%Y-%m')}...")
+            date_ranges.append((start_of_month.strftime('%Y-%m-%d'), end_of_month.strftime('%Y-%m-%d')))
+    elif args.start_date and args.end_date:
+        date_ranges.append((args.start_date, args.end_date))
+    elif args.last_7_days:
+        start_date = (today - timedelta(days=7)).strftime('%Y-%m-%d')
+        end_date = today.strftime('%Y-%m-%d')
+        date_ranges.append((start_date, end_date))
+    elif args.last_28_days:
+        start_date = (today - timedelta(days=28)).strftime('%Y-%m-%d')
+        end_date = today.strftime('%Y-%m-%d')
+        date_ranges.append((start_date, end_date))
+    else:  # Default to last complete month
+        end_of_month = today.replace(day=1) - timedelta(days=1)
+        start_of_month = end_of_month.replace(day=1)
+        date_ranges.append((start_of_month.strftime('%Y-%m-%d'), end_of_month.strftime('%Y-%m-%d')))
+
+    for start_date, end_date in date_ranges:
+        print(f"\n----- Processing date range: {start_date} to {end_date} -----")
+        all_data = []
+        for site_url in sites:
+            print(f"\nFetching data for site: {site_url}")
             data = get_monthly_performance_data(service, site_url, start_date, end_date)
             if data == "PERMISSION_DENIED":
-                break
+                continue # Skip to the next site
             elif data:
-                all_data.append({'site_url': site_url, 'month': start_of_month.strftime('%Y-%m'), **data})
-    
-    if not all_data:
-        print("No performance data found.")
-        return
+                all_data.append({'site_url': site_url, 'month': start_date[:7], **data})
+        
+        if not all_data:
+            print(f"No performance data found for the period {start_date} to {end_date}.")
+            continue
 
-    df = pd.DataFrame(all_data)
-    column_order = ['site_url', 'month', 'clicks', 'impressions', 'ctr', 'position', 'queries', 'pages', 'queries_truncated', 'pages_truncated']
-    df = df[column_order]
-    
-    # Since we are only fetching one month, we can use the month from the first row.
-    report_month = df['month'].iloc[0] if not df.empty else (today.replace(day=1) - timedelta(days=1)).strftime('%Y-%m')
-
-    if args.site_url:
-        site = args.site_url
-        if site.startswith('sc-domain:'):
-            host_plain = site.replace('sc-domain:', '')
+        df = pd.DataFrame(all_data)
+        column_order = ['site_url', 'month', 'clicks', 'impressions', 'ctr', 'position', 'queries', 'pages', 'queries_truncated', 'pages_truncated']
+        df = df[column_order]
+        
+        report_month_str = start_date[:7]
+        
+        if args.site_url:
+            site = args.site_url
+            if site.startswith('sc-domain:'):
+                host_plain = site.replace('sc-domain:', '')
+            else:
+                host_plain = urlparse(site).netloc
+            
+            host_dir = host_plain.replace('www.', '')
+            output_dir = os.path.join('output', host_dir)
+            file_prefix = f"monthly-summary-report-{host_dir.replace('.', '-')}-{start_date}-to-{end_date}"
+            report_title = f"Monthly Summary for {site}"
         else:
-            host_plain = urlparse(site).netloc
-        
-        host_dir = host_plain.replace('www.', '')
-        output_dir = os.path.join('output', host_dir)
-        file_prefix = f"monthly-summary-report-{host_dir.replace('.', '-')}-{report_month}"
-        report_title = f"Monthly Summary for {site}"
-    else:
-        output_dir = os.path.join('output', 'account')
-        file_prefix = f"monthly-summary-report-account-wide-{report_month}"
-        report_title = "Monthly Summary Report"
+            output_dir = os.path.join('output', 'account')
+            file_prefix = f"monthly-summary-report-account-wide-{start_date}-to-{end_date}"
+            report_title = "Monthly Summary Report"
 
-    os.makedirs(output_dir, exist_ok=True)
-    csv_output_path = os.path.join(output_dir, f'{file_prefix}.csv')
-    html_output_path = os.path.join(output_dir, f'{file_prefix}.html')
-    
-    try:
-        # No need to process the dataframe for csv, it's already correct
-        df.to_csv(csv_output_path, index=False)
-        print(f"\nSuccessfully exported CSV to {csv_output_path}")
-
-        # The new report function handles the df processing
-        html_output = create_summary_report(df, report_title, report_month)
+        os.makedirs(output_dir, exist_ok=True)
+        csv_output_path = os.path.join(output_dir, f'{file_prefix}.csv')
+        html_output_path = os.path.join(output_dir, f'{file_prefix}.html')
         
-        if html_output:
-            with open(html_output_path, 'w', encoding='utf-8') as f:
-                f.write(html_output)
-            print(f"Successfully created HTML report at {html_output_path}")
-    except PermissionError:
-        print(f"\nError: Permission denied when writing to the output directory.")
+        try:
+            df.to_csv(csv_output_path, index=False)
+            print(f"\nSuccessfully exported CSV to {csv_output_path}")
+
+            report_date_str = f"{start_date} to {end_date}"
+            html_output = create_summary_report(df, report_title, report_date_str)
+            
+            if html_output:
+                with open(html_output_path, 'w', encoding='utf-8') as f:
+                    f.write(html_output)
+                print(f"Successfully created HTML report at {html_output_path}")
+        except PermissionError:
+            print(f"\nError: Permission denied when writing to the output directory.")
 
 if __name__ == '__main__':
     main()
