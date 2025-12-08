@@ -35,7 +35,7 @@
     <div class="container">
         <div class="header">
             <h1>Google Organic Wrapped</h1>
-            <p class="lead">Report for <strong>{{ wrapped_data.site_url }}</strong></p>
+            <h2 class="h4">Report for <strong>{{ wrapped_data.site_url }}</strong></h2>
         </div>
 
         <div class="card">
@@ -78,15 +78,28 @@
                         </ul>
                     </div>
                     <div class="col-md-6 mb-4">
-                        <h5>Your Top 5 Queries</h5>
+                        <h5>Your Top 5 Brand Queries</h5>
                         <ul class="top-list">
-                            {% for query in wrapped_data.top_queries %}
+                            {% for query in wrapped_data.top_brand_queries %}
                             <li>
                                 <span class="item-name">{{ query.query }}</span>
                                 <span class="item-clicks">{{ "{:,.0f}".format(query.clicks) }} clicks</span>
                             </li>
                             {% else %}
-                            <li>No query data found.</li>
+                            <li>No brand query data found.</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    <div class="col-md-6 mb-4">
+                        <h5>Your Top 5 Non-Brand Queries</h5>
+                        <ul class="top-list">
+                            {% for query in wrapped_data.top_non_brand_queries %}
+                            <li>
+                                <span class="item-name">{{ query.query }}</span>
+                                <span class="item-clicks">{{ "{:,.0f}".format(query.clicks) }} clicks</span>
+                            </li>
+                            {% else %}
+                            <li>No non-brand query data found.</li>
                             {% endfor %}
                         </ul>
                     </div>

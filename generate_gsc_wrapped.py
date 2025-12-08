@@ -93,6 +93,52 @@ def get_gsc_data(service, site_url, start_date, end_date, dimensions, row_limit=
             
     return all_data
 
+import re
+
+def get_brand_terms(site_url):
+    """
+    Automatically extracts a set of likely brand terms from a site URL.
+
+    Args:
+        site_url (str): The URL of the site.
+
+    Returns:
+        set: A set of guessed brand terms.
+    """
+    if not site_url or site_url == "Loaded from CSV":
+        return set()
+        
+    hostname = urlparse(site_url).hostname
+    if not hostname:
+        return set()
+
+    # A list of common public suffixes to remove.
+    # This is a simplified approach. A more robust solution might use a library
+    # like tldextract, but this avoids adding a new dependency.
+    suffixes_to_remove = ['.com', '.co.uk', '.org', '.net', '.gov', '.edu', '.io', '.co']
+    
+    # Remove 'www.' prefix
+    if hostname.startswith('www.'):
+        hostname = hostname[4:]
+        
+    # Iteratively remove suffixes
+    for suffix in sorted(suffixes_to_remove, key=len, reverse=True):
+        if hostname.endswith(suffix):
+            hostname = hostname[:-len(suffix)]
+            break # Stop after the first, longest match
+            
+    if not hostname:
+        return set()
+
+    # Generate variations
+    terms = {hostname}
+    if '-' in hostname:
+        terms.add(hostname.replace('-', ' '))
+        terms.add(hostname.replace('-', ''))
+        
+    print(f"Auto-detected brand terms: {terms}")
+    return terms
+
 def generate_wrapped_narrative(wrapped_data):
     """Generates human-readable narrative strings from the wrapped_data."""
     narratives = {}
@@ -141,7 +187,7 @@ def generate_wrapped_narrative(wrapped_data):
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Generate a "Spotify Wrapped" style report for Google Search Console data.',
+        description='Generate a "Google Organic Wrapped"-style report for Google Search Console data.',
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
     parser.add_argument('site_url', help='The URL of the site to generate the report for.')
@@ -165,6 +211,9 @@ def main():
         '--end-date',
         help='End date in YYYY-MM-DD format. Used only with --start-date.'
     )
+
+    parser.add_argument('--no-brand-detection', action='store_true', help='Disable automatic brand term detection.')
+    parser.add_argument('--brand-terms', nargs='+', help='A list of additional brand terms to include in the analysis.')
     
     args = parser.parse_args()
 
@@ -211,12 +260,46 @@ def main():
         for item in top_pages_data:
             top_pages.append({'url': item['keys'][0], 'clicks': item['clicks']})
     
-    # 3. Top 5 Queries by Clicks
-    top_queries_data = get_gsc_data(service, site_url, start_date, end_date, dimensions=['query'], row_limit=5, paginate=False)
-    top_queries = []
-    if top_queries_data:
-        for item in top_queries_data:
-            top_queries.append({'query': item['keys'][0], 'clicks': item['clicks']})
+    # 3. Top Queries for Brand/Non-Brand classification (fetch more to ensure enough for top 5 of each)
+    all_top_queries_for_classification = get_gsc_data(service, site_url, start_date, end_date, dimensions=['query'], row_limit=500, paginate=False)
+    
+    top_brand_queries = []
+    top_non_brand_queries = []
+
+    if all_top_queries_for_classification:
+        queries_df = pd.DataFrame(all_top_queries_for_classification)
+        queries_df['query'] = pd.DataFrame(queries_df['keys'].tolist(), index=queries_df.index)
+        queries_df.drop(columns=['keys'], inplace=True)
+
+        brand_terms = set()
+        if not args.no_brand_detection:
+            brand_terms.update(get_brand_terms(site_url))
+        if args.brand_terms:
+            brand_terms.update(term.lower() for term in args.brand_terms)
+
+        if brand_terms:
+            print(f"Classifying queries with brand terms: {brand_terms}")
+            pattern = r'\b(?:' + '|'.join(re.escape(term) for term in brand_terms) + r')\b'
+            queries_df['brand_type'] = queries_df['query'].str.contains(pattern, case=False, regex=True).map({True: 'Brand', False: 'Non-Brand'})
+
+            top_brand_queries_df = queries_df[queries_df['brand_type'] == 'Brand'].nlargest(5, 'clicks')
+            for _, row in top_brand_queries_df.iterrows():
+                top_brand_queries.append({'query': row['query'], 'clicks': row['clicks']})
+            
+            top_non_brand_queries_df = queries_df[queries_df['brand_type'] == 'Non-Brand'].nlargest(5, 'clicks')
+            for _, row in top_non_brand_queries_df.iterrows():
+                top_non_brand_queries.append({'query': row['query'], 'clicks': row['clicks']})
+        else:
+            print("No brand terms specified or detected, all queries will be treated as non-brand for classification purposes.")
+            # If no brand terms, all queries go to non-brand for simplicity in this section
+            top_non_brand_queries_df = queries_df.nlargest(5, 'clicks')
+            for _, row in top_non_brand_queries_df.iterrows():
+                top_non_brand_queries.append({'query': row['query'], 'clicks': row['clicks']})
+            
+    # Fallback for top_query if no brand/non-brand queries found
+    top_query = top_non_brand_queries[0]['query'] if top_non_brand_queries else (top_brand_queries[0]['query'] if top_brand_queries else "N/A")
+    top_query_clicks = top_non_brand_queries[0]['clicks'] if top_non_brand_queries else (top_brand_queries[0]['clicks'] if top_brand_queries else 0)
+
 
     # 4. Total Unique Pages and Queries (by fetching one large batch and checking its size)
     page_count_batch = get_gsc_data(service, site_url, start_date, end_date, dimensions=['page'], row_limit=25000, paginate=False)
@@ -269,22 +352,23 @@ def main():
         'total_impressions': total_impressions,
         'top_page': top_pages[0]['url'] if top_pages else "N/A",
         'top_page_clicks': top_pages[0]['clicks'] if top_pages else 0,
-        'top_query': top_queries[0]['query'] if top_queries else "N/A",
-        'top_query_clicks': top_queries[0]['clicks'] if top_queries else 0,
+        'top_query': top_query, # still keep single top_query for narrative
+        'top_query_clicks': top_query_clicks, # still keep single top_query_clicks for narrative
         'top_pages': top_pages,
-        'top_queries': top_queries,
+        'top_brand_queries': top_brand_queries,
+        'top_non_brand_queries': top_non_brand_queries,
         'unique_pages_str': unique_pages_str,
         'unique_queries_str': unique_queries_str,
         'most_clicked_month': most_clicked_month,
         'most_clicked_month_clicks': most_clicked_month_clicks,
     }
 
-    print("\n--- GSC Wrapped Key Metrics ---")
+    print("\n--- Google Organic Wrapped Key Metrics ---")
     for key, value in wrapped_data.items():
         print(f"{key.replace('_', ' ').title()}: {value:,}" if isinstance(value, (int, float)) else f"{key.replace('_', ' ').title()}: {value}")
     
     narratives = generate_wrapped_narrative(wrapped_data)
-    print("\n--- Your GSC Wrapped Story ---")
+    print("\n--- Your Google Organic Wrapped Story ---")
     for key, narrative in narratives.items():
         print(f"- {narrative}")
     
@@ -297,15 +381,19 @@ def main():
     html_output = template.render(wrapped_data=wrapped_data, narratives=narratives)
 
     # Save the rendered HTML to a file
-    html_filename = f"gsc-wrapped-report-{host_for_filename}-{date_range_label}.html"
+    html_filename = f"google-organic-wrapped-report-{host_for_filename}-{date_range_label}.html"
     html_output_path = os.path.join(output_dir, html_filename)
 
     try:
         with open(html_output_path, 'w', encoding='utf-8') as f:
             f.write(html_output)
-        print(f"\nSuccessfully created GSC Wrapped HTML report at {html_output_path}")
+        print(f"\nSuccessfully created Google Organic Wrapped HTML report at {html_output_path}")
     except IOError as e:
         print(f"Error writing HTML report to file: {e}")
+
+if __name__ == '__main__':
+    main()
+
 
 if __name__ == '__main__':
     main()
