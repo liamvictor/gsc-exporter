@@ -50,10 +50,27 @@ This suite includes several scripts for different types of analysis:
 *   [queries-pages-analysis.py](#queries-pages-analysis)
 *   [query-position-analysis.py](#query-position-distribution-analysis)
 *   [snapshot-report.py](#snapshot-report.py)
+*   [generate_gsc_wrapped.py](#generate-gsc-wrapped-py)
 
 ---
 
 ## gsc_pages_exporter.py
+---
+## generate_gsc_wrapped.py
+
+Creates a "Spotify Wrapped"-style annual summary for a single GSC property, presenting your year in search in a fun, engaging format.
+
+### Usage
+
+```bash
+python generate_gsc_wrapped.py <site_url> [date_range_option]
+```
+*   `<site_url>`: (Required) The full URL of the site property.
+*   **Date Range Options**: By default, the script runs for the current year-to-date. You can use `--last-12-months` to get the last 12 complete months, or specify a custom range with `--start-date` and `--end-date`.
+
+### Output
+
+Generates a visually engaging HTML report in `output/<hostname>/` that highlights key metrics like total clicks, top pages, and busiest months.
 
 Exports all known pages from a GSC property for a given date range.
 

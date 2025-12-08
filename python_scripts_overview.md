@@ -33,3 +33,7 @@ Extends the `key-performance-metrics.py` script by also fetching the number of u
 ## query-position-analysis.py
 
 Focuses on the distribution of query positions, breaking down clicks and impressions into predefined ranking buckets. It can also run for a single site or for all properties in a GSC account. The output is a CSV file and an HTML report.
+
+## generate_gsc_wrapped.py
+
+Creates a "Spotify Wrapped"-style annual summary for a single GSC property. It highlights key metrics like total clicks and impressions, top-performing pages and queries, and the busiest month in a visually engaging HTML report. Date ranges can be customised.
