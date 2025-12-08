@@ -190,67 +190,48 @@ def main():
     if not service:
         return
 
-    # Fetch data for date, query, and page
-    raw_data = get_gsc_data(service, site_url, start_date, end_date, dimensions=['date', 'query', 'page'])
+    print(f"Fetching GSC data for {site_url} from {start_date} to {end_date}...")
 
-    if not raw_data:
-        print(f"No data found for the given site and date range ({start_date} to {end_date}).")
-        return
-
-    df = pd.DataFrame(raw_data)
-    # The 'keys' column contains the dimensions in the order they were requested
-    df[['date', 'query', 'page']] = pd.DataFrame(df['keys'].tolist(), index=df.index)
-    df.drop(columns=['keys'], inplace=True)
-
-    # Convert date to datetime object
-    df['date'] = pd.to_datetime(df['date'])
-
-    # Ensure output directory exists
-    if site_url.startswith('sc-domain:'):
-        host_plain = site_url.replace('sc-domain:', '')
-    else:
-        host_plain = urlparse(site_url).netloc
+    # --- Efficient Data Fetching ---
     
-    host_dir = host_plain.replace('www.', '')
-    output_dir = os.path.join('output', host_dir)
-    os.makedirs(output_dir, exist_ok=True)
-    host_for_filename = host_dir.replace('.', '-')
-    
-    # Save raw data to CSV for debugging/re-use
-    csv_filename = f"gsc-wrapped-raw-data-{host_for_filename}-{date_range_label}.csv"
-    csv_output_path = os.path.join(output_dir, csv_filename)
-    
-    try:
-        df.to_csv(csv_output_path, index=False, encoding='utf-8')
-        print(f"\nSuccessfully saved raw GSC data to {csv_output_path}")
-    except IOError as e:
-        print(f"Error writing CSV to file: {e}")
-
-    print("\nRaw data fetched and saved. Proceeding with analysis...")
-
-    # 1. Total Clicks and Impressions for the year
-    total_clicks = df['clicks'].sum()
-    total_impressions = df['impressions'].sum()
+    # 1. Total Clicks and Impressions
+    total_agg_data = get_gsc_data(service, site_url, start_date, end_date, dimensions=[], row_limit=1)
+    total_clicks = total_agg_data[0]['clicks'] if total_agg_data else 0
+    total_impressions = total_agg_data[0]['impressions'] if total_agg_data else 0
 
     # 2. Top Page by Clicks
-    top_page_df = df.groupby('page')['clicks'].sum().nlargest(1).reset_index()
-    top_page = top_page_df.iloc[0]['page'] if not top_page_df.empty else "N/A"
-    top_page_clicks = top_page_df.iloc[0]['clicks'] if not top_page_df.empty else 0
+    top_pages_data = get_gsc_data(service, site_url, start_date, end_date, dimensions=['page'], row_limit=1)
+    top_page = top_pages_data[0]['keys'][0] if top_pages_data else "N/A"
+    top_page_clicks = top_pages_data[0]['clicks'] if top_pages_data else 0
 
     # 3. Top Query by Clicks
-    top_query_df = df.groupby('query')['clicks'].sum().nlargest(1).reset_index()
-    top_query = top_query_df.iloc[0]['query'] if not top_query_df.empty else "N/A"
-    top_query_clicks = top_query_df.iloc[0]['clicks'] if not top_query_df.empty else 0
+    top_queries_data = get_gsc_data(service, site_url, start_date, end_date, dimensions=['query'], row_limit=1)
+    top_query = top_queries_data[0]['keys'][0] if top_queries_data else "N/A"
+    top_query_clicks = top_queries_data[0]['clicks'] if top_queries_data else 0
 
-    # 4. Total Unique Pages and Queries
-    unique_pages = df['page'].nunique()
-    unique_queries = df['query'].nunique()
+    # 4. Total Unique Pages and Queries (by fetching all pages/queries and counting)
+    all_pages_data = get_gsc_data(service, site_url, start_date, end_date, dimensions=['page'])
+    unique_pages = len(all_pages_data) if all_pages_data is not None else 0
+    
+    all_queries_data = get_gsc_data(service, site_url, start_date, end_date, dimensions=['query'])
+    unique_queries = len(all_queries_data) if all_queries_data is not None else 0
 
     # 5. Month with Most Clicks
-    df['month'] = df['date'].dt.to_period('M')
-    monthly_clicks = df.groupby('month')['clicks'].sum().nlargest(1).reset_index()
-    most_clicked_month = monthly_clicks.iloc[0]['month'].strftime('%B') if not monthly_clicks.empty else "N/A"
-    most_clicked_month_clicks = monthly_clicks.iloc[0]['clicks'] if not monthly_clicks.empty else 0
+    daily_data = get_gsc_data(service, site_url, start_date, end_date, dimensions=['date'])
+    if daily_data:
+        df_daily = pd.DataFrame(daily_data)
+        df_daily[['date']] = pd.DataFrame(df_daily['keys'].tolist(), index=df_daily.index)
+        df_daily['date'] = pd.to_datetime(df_daily['date'])
+        df_daily['month'] = df_daily['date'].dt.to_period('M')
+        monthly_clicks = df_daily.groupby('month')['clicks'].sum().nlargest(1).reset_index()
+        most_clicked_month = monthly_clicks.iloc[0]['month'].strftime('%B') if not monthly_clicks.empty else "N/A"
+        most_clicked_month_clicks = monthly_clicks.iloc[0]['clicks'] if not monthly_clicks.empty else 0
+    else:
+        most_clicked_month = "N/A"
+        most_clicked_month_clicks = 0
+
+    # --- Analysis Complete ---
+    print("\nAnalysis complete.")
 
     wrapped_data = {
         'site_url': site_url,
@@ -283,6 +264,17 @@ def main():
 
     # Render the template
     html_output = template.render(wrapped_data=wrapped_data, narratives=narratives)
+
+    # Ensure output directory exists
+    if site_url.startswith('sc-domain:'):
+        host_plain = site_url.replace('sc-domain:', '')
+    else:
+        host_plain = urlparse(site_url).netloc
+    
+    host_dir = host_plain.replace('www.', '')
+    output_dir = os.path.join('output', host_dir)
+    os.makedirs(output_dir, exist_ok=True)
+    host_for_filename = host_dir.replace('.', '-')
 
     # Save the rendered HTML to a file
     html_filename = f"gsc-wrapped-report-{host_for_filename}-{date_range_label}.html"
