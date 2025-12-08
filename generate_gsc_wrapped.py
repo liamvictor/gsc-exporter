@@ -447,8 +447,15 @@ def main():
 
     # --- Report Generation ---
     if site_url:
-        host_plain = urlparse(site_url).netloc if not site_url.startswith('sc-domain:') else site_url.replace('sc-domain:', '')
-        host_dir = host_plain.replace('www.', '')
+        is_domain_property = site_url.startswith('sc-domain:')
+        
+        if is_domain_property:
+            host_plain = site_url.replace('sc-domain:', '')
+            host_dir = f"sc-domain-{host_plain}"
+        else:
+            host_plain = urlparse(site_url).netloc
+            host_dir = host_plain.replace('www.', '')
+
         output_dir = os.path.join('output', host_dir)
         os.makedirs(output_dir, exist_ok=True)
         host_for_filename = host_dir.replace('.', '-')
