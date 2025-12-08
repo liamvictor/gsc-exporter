@@ -36,4 +36,4 @@ Focuses on the distribution of query positions, breaking down clicks and impress
 
 ## generate_gsc_wrapped.py
 
-Creates a "Spotify Wrapped"-style annual summary for a single GSC property. It highlights key metrics like total clicks and impressions, top-performing pages and queries, and the busiest month in a visually engaging HTML report. Date ranges can be customised.
+Creates a "Google Organic Wrapped"-style annual summary for a single site. It highlights key metrics like total clicks and impressions, top-performing pages and queries, and the busiest month in a visually engaging HTML report. Date ranges can be customised.

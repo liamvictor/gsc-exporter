@@ -50,7 +50,7 @@ This suite includes several scripts for different types of analysis:
 *   [queries-pages-analysis.py](#queries-pages-analysis)
 *   [query-position-analysis.py](#query-position-distribution-analysis)
 *   [snapshot-report.py](#snapshot-report.py)
-*   [generate_gsc_wrapped.py](#generate-gsc-wrapped-py)
+*   [generate_gsc_wrapped.py](#google-organic-wrapped-report)
 
 ---
 
@@ -58,7 +58,7 @@ This suite includes several scripts for different types of analysis:
 ---
 ## generate_gsc_wrapped.py
 
-Creates a "Spotify Wrapped"-style annual summary for a single GSC property, presenting your year in search in a fun, engaging format.
+Creates a "Google Organic Wrapped"-style annual summary for a single GSC property, presenting your year in search in a fun, engaging format.
 
 ### Usage
 
