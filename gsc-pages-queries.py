@@ -308,6 +308,26 @@ def generate_accordion_html(grouped_df, primary_dim, secondary_dim, report_limit
     html += '</div>'
     return html
 
+def get_root_domain(site_url):
+    """Extracts a clean root domain from a GSC site URL."""
+    if site_url.startswith('sc-domain:'):
+        return site_url.replace('sc-domain:', '')
+    
+    hostname = urlparse(site_url).hostname
+    if not hostname:
+        return None
+    
+    # Use a regex to find the most likely root domain, handling .co.uk, .com, etc.
+    match = re.search(r'([\w-]+\.(?:co\.uk|com\.au|co\.nz|co\.za|co\.il|co\.jp|com|org|net|biz|info))\s*$', hostname.lower())
+    if match:
+        return match.group(1)
+    
+    # Fallback for other TLDs
+    parts = hostname.split('.')
+    if len(parts) > 1:
+        return '.'.join(parts[-2:])
+    return hostname
+
 def get_brand_terms(site_url):
     """
     Automatically extracts a set of likely brand terms from a site URL.
@@ -390,6 +410,7 @@ def main():
     parser.add_argument('--sub-table-limit', type=int, default=100, help='Maximum number of sub-items (pages/queries) to display in each section of the HTML report. Default is 100.')
     parser.add_argument('--no-brand-detection', action='store_true', help='Disable the automatic brand term detection.')
     parser.add_argument('--brand-terms', nargs='+', help='A list of additional brand terms to include in the analysis.')
+    parser.add_argument('--brand-terms-file', help='Path to a text file containing brand terms, one per line.')
     
     args = parser.parse_args()
 
@@ -529,12 +550,32 @@ def main():
     # --- Generate and Save HTML Report ---
     if df is not None:
         brand_terms = set()
-        # Auto-detect brand terms by default
-        if not args.no_brand_detection:
-            # site_url might be "Loaded from CSV", so we use args.site_url which is the original input
+        # Priority 1: --brand-terms-file flag
+        if args.brand_terms_file:
+            if os.path.exists(args.brand_terms_file):
+                with open(args.brand_terms_file, 'r') as f:
+                    file_terms = [line.strip().lower() for line in f if line.strip()]
+                    brand_terms.update(file_terms)
+                print(f"Loaded {len(file_terms)} brand terms from {args.brand_terms_file}")
+            else:
+                print(f"Warning: Brand terms file not found at '{args.brand_terms_file}'.")
+        
+        # Priority 2: Automatic file in /config (if no explicit file and brand detection is on)
+        elif not args.no_brand_detection:
+            root_domain = get_root_domain(args.site_url or site_url)
+            if root_domain:
+                config_file_path = os.path.join('config', f'brand-terms-{root_domain.split(".")[0]}.txt')
+                if os.path.exists(config_file_path):
+                    with open(config_file_path, 'r') as f:
+                        config_terms = [line.strip().lower() for line in f if line.strip()]
+                        brand_terms.update(config_terms)
+                    print(f"Loaded {len(config_terms)} brand terms from {config_file_path} (auto-detected).")
+        
+        # Priority 3: Auto-detection from URL (if brand detection is on and no other terms loaded yet)
+        if not args.no_brand_detection and not brand_terms:
             brand_terms.update(get_brand_terms(args.site_url or site_url))
 
-        # Add manually specified brand terms
+        # Priority 4: --brand-terms from command line (always adds to the set)
         if args.brand_terms:
             brand_terms.update(term.lower() for term in args.brand_terms)
         

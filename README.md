@@ -126,9 +126,10 @@ A data source is required. You must specify either `<site_url>` (positional argu
     *   `--report-limit <number>`: Sets the maximum number of top-level items (e.g., queries or pages) to include in the HTML report. Defaults to 250.
     *   `--sub-table-limit <number>`: Sets the maximum number of rows to display within each accordion's sub-table. Defaults to 100.
 *   **Brand Analysis**:
-    *   By default, the script automatically detects brand terms from the site URL and classifies queries containing them as "Brand".
-    *   `--brand-terms <term1> <term2> ...`: Specify a list of custom brand terms. These are added to the auto-detected terms.
-    *   `--no-brand-detection`: Disables the brand vs. non-brand classification entirely.
+    *   The script now automatically loads brand terms from a corresponding file in the `config/` directory (e.g., `config/brand-terms-example.txt` for `example.com`).
+    *   `--brand-terms-file <path>`: Manually specify a path to a text file containing brand terms (one per line). This will override the automatic file loading.
+    *   `--brand-terms <term1> <term2> ...`: Specify a list of custom brand terms on the command line. These are always added to the set of terms.
+    *   `--no-brand-detection`: Disables all brand analysis, including file loading and URL detection.
 
 ### Example Workflow
 

@@ -95,6 +95,26 @@ def get_gsc_data(service, site_url, start_date, end_date, dimensions, row_limit=
 
 import re
 
+def get_root_domain(site_url):
+    """Extracts a clean root domain from a GSC site URL."""
+    if site_url.startswith('sc-domain:'):
+        return site_url.replace('sc-domain:', '')
+    
+    hostname = urlparse(site_url).hostname
+    if not hostname:
+        return None
+    
+    # Use a regex to find the most likely root domain, handling .co.uk, .com, etc.
+    match = re.search(r'([\w-]+\.(?:co\.uk|com\.au|co\.nz|co\.za|co\.il|co\.jp|com|org|net|biz|info))\s*$', hostname.lower())
+    if match:
+        return match.group(1)
+    
+    # Fallback for other TLDs
+    parts = hostname.split('.')
+    if len(parts) > 1:
+        return '.'.join(parts[-2:])
+    return hostname
+
 def get_brand_terms(site_url):
     """
     Automatically extracts a set of likely brand terms from a site URL.
@@ -273,11 +293,7 @@ def main():
         queries_df.drop(columns=['keys'], inplace=True)
 
         brand_terms = set()
-        if not args.no_brand_detection:
-            brand_terms.update(get_brand_terms(site_url))
-        if args.brand_terms:
-            brand_terms.update(term.lower() for term in args.brand_terms)
-        
+        # Priority 1: --brand-terms-file flag
         if args.brand_terms_file:
             if os.path.exists(args.brand_terms_file):
                 with open(args.brand_terms_file, 'r') as f:
@@ -285,7 +301,27 @@ def main():
                     brand_terms.update(file_terms)
                 print(f"Loaded {len(file_terms)} brand terms from {args.brand_terms_file}")
             else:
-                print(f"Warning: Brand terms file not found at '{args.brand_terms_file}'")
+                print(f"Warning: Brand terms file not found at '{args.brand_terms_file}'.")
+        
+        # Priority 2: Automatic file in /config (if no explicit file and brand detection is on)
+        elif not args.no_brand_detection:
+            root_domain = get_root_domain(site_url)
+            if root_domain:
+                file_name_root = root_domain.split('.')[0]
+                config_file_path = os.path.join('config', f'brand-terms-{file_name_root}.txt')
+                if os.path.exists(config_file_path):
+                    with open(config_file_path, 'r') as f:
+                        config_terms = [line.strip().lower() for line in f if line.strip()]
+                        brand_terms.update(config_terms)
+                    print(f"Loaded {len(config_terms)} brand terms from {config_file_path} (auto-detected).")
+
+        # Priority 3: Auto-detection from URL (if brand detection is on and no terms loaded yet)
+        if not args.no_brand_detection and not brand_terms:
+            brand_terms.update(get_brand_terms(site_url))
+
+        # Priority 4: --brand-terms from command line (always adds to the set)
+        if args.brand_terms:
+            brand_terms.update(term.lower() for term in args.brand_terms)
 
         if brand_terms:
             print(f"Classifying queries with brand terms: {brand_terms}")
@@ -301,7 +337,6 @@ def main():
                 top_non_brand_queries.append({'query': row['query'], 'clicks': row['clicks']})
         else:
             print("No brand terms specified or detected, all queries will be treated as non-brand for classification purposes.")
-            # If no brand terms, all queries go to non-brand for simplicity in this section
             top_non_brand_queries_df = queries_df.nlargest(5, 'clicks')
             for _, row in top_non_brand_queries_df.iterrows():
                 top_non_brand_queries.append({'query': row['query'], 'clicks': row['clicks']})
