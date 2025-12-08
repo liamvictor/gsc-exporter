@@ -336,11 +336,11 @@ def main():
             queries_df['query'] = queries_df['keys'].apply(lambda x: x[0])
             queries_df.drop(columns=['keys'], inplace=True)
         
-        page_count_batch = get_gsc_data(gsc_service, site_url, start_date, end_date, dimensions=['page'], row_limit=25000, paginate=False)
+        page_count_batch = get_gsc_data(gsc_service, site_url, start_date, end_date, dimensions=['page'], row_limit=25000, paginate=True)
         unique_pages = len(page_count_batch) if page_count_batch is not None else 0
         unique_pages_str = "25,000+" if unique_pages == 25000 else f"{unique_pages:,}"
         
-        query_count_batch = get_gsc_data(gsc_service, site_url, start_date, end_date, dimensions=['query'], row_limit=25000, paginate=False)
+        query_count_batch = get_gsc_data(gsc_service, site_url, start_date, end_date, dimensions=['query'], row_limit=25000, paginate=True)
         unique_queries = len(query_count_batch) if query_count_batch is not None else 0
         unique_queries_str = "25,000+" if unique_queries == 25000 else f"{unique_queries:,}"
 
@@ -425,9 +425,15 @@ def main():
                 # CTR
                 monthly_agg = df_daily.groupby('month').agg(total_clicks=('clicks', 'sum'), total_impressions=('impressions', 'sum')).reset_index()
                 monthly_agg['monthly_ctr'] = monthly_agg['total_clicks'] / monthly_agg['total_impressions']
-                highest_ctr_month_series = monthly_agg.loc[monthly_agg['monthly_ctr'].idxmax()]
-                highest_ctr_month = highest_ctr_month_series['month'].strftime('%B')
-                highest_ctr_month_ctr = highest_ctr_month_series['monthly_ctr']
+                
+                # Handle cases with no impressions, which results in NaN/inf for CTR
+                monthly_agg.replace([float('inf'), -float('inf')], float('nan'), inplace=True)
+                monthly_agg.dropna(subset=['monthly_ctr'], inplace=True)
+
+                if not monthly_agg.empty:
+                    highest_ctr_month_series = monthly_agg.loc[monthly_agg['monthly_ctr'].idxmax()]
+                    highest_ctr_month = highest_ctr_month_series['month'].strftime('%B')
+                    highest_ctr_month_ctr = highest_ctr_month_series['monthly_ctr']
 
                 # Position
                 monthly_position = df_daily.groupby('month')['position'].mean().nsmallest(1) # smaller is better
