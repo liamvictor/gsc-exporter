@@ -62,21 +62,91 @@ Creates a "Google Organic Wrapped"-style annual summary for a single GSC propert
 
 ### Usage
 
-```bash
-python generate_gsc_wrapped.py <site_url> [date_range_option]
-```
-*   `<site_url>`: (Required) The full URL of the site property.
-*   **Date Range Options**: By default, a YTD report is generated. You can use `--last-12-months` or a custom range with `--start-date` and `--end-date`.
+The script has two main modes of operation:
+
+1.  **Download Data from GSC:**
+    ```bash
+    python generate_gsc_wrapped.py <site_url> [date_range_option] [options]
+    ```
+
+2.  **Generate Report from CSV:**
+    ```bash
+    python generate_gsc_wrapped.py --csv <path_to_file.csv> [options]
+    ```
+
+### Arguments
+
+*   `<site_url>`: The full URL of the site property (e.g., `https://www.example.com`) or a domain property (e.g., `sc-domain:example.com`). This is required unless `--csv` is used, but highly recommended for full functionality (e.g., 'Monthly Performance' calculations and brand term auto-detection).
+*   `--csv <path>`: Path to an existing CSV file to use as the data source, skipping most GSC API calls. The CSV must contain at least `"page"`, `"query"`, `"clicks"`, and `"impressions"` columns. Date range flags are ignored when `--csv` is used.
+
+*   **Date Range Options**:
+    *   By default, a YTD report is generated.
+    *   `--last-12-months`: Analyze the last 12 complete months.
+    *   `--start-date YYYY-MM-DD` and `--end-date YYYY-MM-DD`: Specify a custom date range.
+
 *   **Brand Analysis Options**:
-    *   `--brand-terms <term1> <term2>`: Specify brand terms directly on the command line.
+    *   `--brand-terms <term1> <term2> ...`: Specify brand terms directly on the command line.
     *   `--brand-terms-file <path>`: Provide a path to a text file containing brand terms (one per line).
     *   `--no-brand-detection`: Disable the brand vs. non-brand classification.
 
+### Features
+
+*   **Enhanced Monthly Metrics**: The report now includes a 2x2 grid displaying monthly performance highlights for:
+    *   Busiest Month (by Clicks)
+    *   Top Impression Month
+    *   Highest CTR Month
+    *   Best Position Month
+*   **Clickable Top Pages**: URLs in the "Your Top 5 Pages" list are now clickable and open in a new browser tab.
+
 ### Output
 
-Generates a visually engaging HTML report in `output/<hostname>/` that highlights key metrics like total clicks, top pages, and busiest months.
+Generates a visually engaging HTML report that highlights key metrics, top pages, and monthly performance.
+*   Reports are saved in `output/<hostname>/`.
+*   To prevent overwriting, `sc-domain:` properties are saved in directories prefixed with `sc-domain-` (e.g., `output/sc-domain-example.com/`).
+
+---
+## run_for_all_properties.py
+
+Executes the `generate_gsc_wrapped.py` script for every Google Search Console property you have access to. This automates the process of generating "Wrapped" reports across your entire portfolio of sites.
+
+### Usage
+
+```bash
+python run_for_all_properties.py [options_for_generate_gsc_wrapped.py]
+```
+
+All command-line arguments passed to `run_for_all_properties.py` (e.g., `--last-12-months`, `--no-brand-detection`, `--brand-terms-file`) will be forwarded to each execution of `generate_gsc_wrapped.py`.
+
+### Example
+
+To generate "Wrapped" reports for all properties for the last 12 months:
+
+```bash
+python run_for_all_properties.py --last-12-months
+```
+
+### Output
+
+The script will print real-time output from each `generate_gsc_wrapped.py` run to your console. HTML reports will be saved in their respective property-specific directories under the `output/` folder, following the naming conventions described in the `generate_gsc_wrapped.py` section.
+
+---
+## gsc_pages_exporter.py
 
 Exports all known pages from a GSC property for a given date range.
+
+### Usage
+
+```bash
+python gsc_pages_exporter.py <site_url> [date_range_option]
+```
+
+*   `<site_url>`: (Required) The full URL of the site property (e.g., `https://www.example.com`) or a domain property (e.g., `sc-domain:example.com`).
+
+*   **Date Range Options**: Options like `--last-7-days`, `--last-month`, `--start-date YYYY-MM-DD`, etc., are available. If omitted, it defaults to the last full month.
+
+### Output
+
+Generates a CSV and an HTML file containing a list of all URLs found in the specified period, saved to the `output/<hostname>/` directory.
 
 ### Usage
 
