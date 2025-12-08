@@ -56,11 +56,12 @@ def get_gsc_service():
 
     return build('webmasters', 'v3', credentials=creds)
 
-def get_gsc_data(service, site_url, start_date, end_date, dimensions, row_limit=25000):
+def get_gsc_data(service, site_url, start_date, end_date, dimensions, row_limit=25000, paginate=True):
     """Fetches GSC data for a given site, date range, and dimensions."""
     all_data = []
     start_row = 0
     print(f"Fetching GSC data for {site_url} from {start_date} to {end_date} with dimensions {dimensions}...")
+    
     while True:
         try:
             request = {
@@ -75,8 +76,11 @@ def get_gsc_data(service, site_url, start_date, end_date, dimensions, row_limit=
                 rows = response['rows']
                 all_data.extend(rows)
                 print(f"Retrieved {len(rows)} rows... (Total: {len(all_data)})")
-                if len(rows) < row_limit:
+                
+                # Break the loop if we're not paginating or if we've received fewer rows than the limit
+                if not paginate or len(rows) < row_limit:
                     break
+                
                 start_row += row_limit
             else:
                 break
@@ -86,6 +90,7 @@ def get_gsc_data(service, site_url, start_date, end_date, dimensions, row_limit=
         except Exception as e:
             print(f"An unexpected error occurred: {e}")
             return None
+            
     return all_data
 
 def generate_wrapped_narrative(wrapped_data):
@@ -119,8 +124,8 @@ def generate_wrapped_narrative(wrapped_data):
 
     # Reach & Breadth
     narratives['reach_breadth'] = (
-        f"Your content appeared for {wrapped_data['unique_queries']:,} different search queries "
-        f"across {wrapped_data['unique_pages']:,} unique pages on your site."
+        f"Your content appeared for {wrapped_data['unique_queries_str']} different search queries "
+        f"across {wrapped_data['unique_pages_str']} unique pages on your site."
     )
 
     # Busiest Month
@@ -195,29 +200,39 @@ def main():
     # --- Efficient Data Fetching ---
     
     # 1. Total Clicks and Impressions
-    total_agg_data = get_gsc_data(service, site_url, start_date, end_date, dimensions=[], row_limit=1)
+    total_agg_data = get_gsc_data(service, site_url, start_date, end_date, dimensions=[], paginate=False)
     total_clicks = total_agg_data[0]['clicks'] if total_agg_data else 0
     total_impressions = total_agg_data[0]['impressions'] if total_agg_data else 0
 
-    # 2. Top Page by Clicks
-    top_pages_data = get_gsc_data(service, site_url, start_date, end_date, dimensions=['page'], row_limit=1)
-    top_page = top_pages_data[0]['keys'][0] if top_pages_data else "N/A"
-    top_page_clicks = top_pages_data[0]['clicks'] if top_pages_data else 0
-
-    # 3. Top Query by Clicks
-    top_queries_data = get_gsc_data(service, site_url, start_date, end_date, dimensions=['query'], row_limit=1)
-    top_query = top_queries_data[0]['keys'][0] if top_queries_data else "N/A"
-    top_query_clicks = top_queries_data[0]['clicks'] if top_queries_data else 0
-
-    # 4. Total Unique Pages and Queries (by fetching all pages/queries and counting)
-    all_pages_data = get_gsc_data(service, site_url, start_date, end_date, dimensions=['page'])
-    unique_pages = len(all_pages_data) if all_pages_data is not None else 0
+    # 2. Top 5 Pages by Clicks
+    top_pages_data = get_gsc_data(service, site_url, start_date, end_date, dimensions=['page'], row_limit=5, paginate=False)
+    top_pages = []
+    if top_pages_data:
+        for item in top_pages_data:
+            top_pages.append({'url': item['keys'][0], 'clicks': item['clicks']})
     
-    all_queries_data = get_gsc_data(service, site_url, start_date, end_date, dimensions=['query'])
-    unique_queries = len(all_queries_data) if all_queries_data is not None else 0
+    # 3. Top 5 Queries by Clicks
+    top_queries_data = get_gsc_data(service, site_url, start_date, end_date, dimensions=['query'], row_limit=5, paginate=False)
+    top_queries = []
+    if top_queries_data:
+        for item in top_queries_data:
+            top_queries.append({'query': item['keys'][0], 'clicks': item['clicks']})
+
+    # 4. Total Unique Pages and Queries (by fetching one large batch and checking its size)
+    page_count_batch = get_gsc_data(service, site_url, start_date, end_date, dimensions=['page'], row_limit=25000, paginate=False)
+    unique_pages = len(page_count_batch) if page_count_batch is not None else 0
+    unique_pages_str = f"{unique_pages:,}"
+    if unique_pages == 25000:
+        unique_pages_str = "25,000+"
+        
+    query_count_batch = get_gsc_data(service, site_url, start_date, end_date, dimensions=['query'], row_limit=25000, paginate=False)
+    unique_queries = len(query_count_batch) if query_count_batch is not None else 0
+    unique_queries_str = f"{unique_queries:,}"
+    if unique_queries == 25000:
+        unique_queries_str = "25,000+"
 
     # 5. Month with Most Clicks
-    daily_data = get_gsc_data(service, site_url, start_date, end_date, dimensions=['date'])
+    daily_data = get_gsc_data(service, site_url, start_date, end_date, dimensions=['date'], paginate=True) # Paginate here is fine
     if daily_data:
         df_daily = pd.DataFrame(daily_data)
         df_daily[['date']] = pd.DataFrame(df_daily['keys'].tolist(), index=df_daily.index)
@@ -238,12 +253,14 @@ def main():
         'year': date_range_label.replace("_", " "), # Use a descriptive label
         'total_clicks': total_clicks,
         'total_impressions': total_impressions,
-        'top_page': top_page,
-        'top_page_clicks': top_page_clicks,
-        'top_query': top_query,
-        'top_query_clicks': top_query_clicks,
-        'unique_pages': unique_pages,
-        'unique_queries': unique_queries,
+        'top_page': top_pages[0]['url'] if top_pages else "N/A",
+        'top_page_clicks': top_pages[0]['clicks'] if top_pages else 0,
+        'top_query': top_queries[0]['query'] if top_queries else "N/A",
+        'top_query_clicks': top_queries[0]['clicks'] if top_queries else 0,
+        'top_pages': top_pages,
+        'top_queries': top_queries,
+        'unique_pages_str': unique_pages_str,
+        'unique_queries_str': unique_queries_str,
         'most_clicked_month': most_clicked_month,
         'most_clicked_month_clicks': most_clicked_month_clicks,
     }

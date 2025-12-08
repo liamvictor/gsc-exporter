@@ -20,10 +20,15 @@
         .narrative-section p { font-size: 1.1rem; line-height: 1.8; color: #495057; }
         .narrative-section strong { color: #007bff; }
         .footer { text-align: center; margin-top: 50px; font-size: 0.9rem; color: #6c757d; }
-        .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; }
-        .stat-item { background-color: #ffffff; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); text-align: center; }
-        .stat-item .value { font-size: 2rem; font-weight: bold; color: #28a745; }
-        .stat-item .label { font-size: 0.9rem; color: #6c757d; }
+        .stat-grid { display: flex; flex-wrap: wrap; justify-content: space-around; gap: 20px; }
+        .stat-item { background-color: #ffffff; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); text-align: center; flex-grow: 1; min-width: 200px; }
+        .stat-item .value { font-size: 2rem; font-weight: bold; color: #28a745; display: block; }
+        .stat-item .label { font-size: 0.9rem; color: #6c757d; display: block; margin-top: 5px;}
+        .top-list { list-style-type: none; padding-left: 0; }
+        .top-list li { display: flex; justify-content: space-between; align-items: center; padding: 10px 5px; border-bottom: 1px solid #f0f0f0; }
+        .top-list li:last-child { border-bottom: none; }
+        .top-list .item-name { text-align: left; word-break: break-all; padding-right: 15px; }
+        .top-list .item-clicks { font-weight: bold; white-space: nowrap; }
     </style>
 </head>
 <body>
@@ -45,11 +50,11 @@
                     <span class="label">Total Impressions</span>
                 </div>
                 <div class="stat-item">
-                    <span class="value">{{ "{:,.0f}".format(wrapped_data.unique_queries) }}</span>
+                    <span class="value">{{ wrapped_data.unique_queries_str }}</span>
                     <span class="label">Unique Queries</span>
                 </div>
                 <div class="stat-item">
-                    <span class="value">{{ "{:,.0f}".format(wrapped_data.unique_pages) }}</span>
+                    <span class="value">{{ wrapped_data.unique_pages_str }}</span>
                     <span class="label">Unique Pages</span>
                 </div>
             </div>
@@ -60,28 +65,30 @@
             <div class="card-body">
                 <div class="row">
                     <div class="col-md-6 mb-4">
-                        <div class="card h-100">
-                            <div class="card-body">
-                                <h5 class="card-title text-primary">Your #1 Page</h5>
-                                <p class="card-text">
-                                    <span class="metric-value">{{ "{:,.0f}".format(wrapped_data.top_page_clicks) }} clicks</span>
-                                    <span class="metric-label">for</span>
-                                    <strong class="d-block text-break">{{ wrapped_data.top_page }}</strong>
-                                </p>
-                            </div>
-                        </div>
+                        <h5>Your Top 5 Pages</h5>
+                        <ul class="top-list">
+                            {% for page in wrapped_data.top_pages %}
+                            <li>
+                                <span class="item-name">{{ page.url }}</span>
+                                <span class="item-clicks">{{ "{:,.0f}".format(page.clicks) }} clicks</span>
+                            </li>
+                            {% else %}
+                            <li>No page data found.</li>
+                            {% endfor %}
+                        </ul>
                     </div>
                     <div class="col-md-6 mb-4">
-                        <div class="card h-100">
-                            <div class="card-body">
-                                <h5 class="card-title text-success">Your #1 Query</h5>
-                                <p class="card-text">
-                                    <span class="metric-value">{{ "{:,.0f}".format(wrapped_data.top_query_clicks) }} clicks</span>
-                                    <span class="metric-label">for the query</span>
-                                    <strong class="d-block">{{ wrapped_data.top_query }}</strong>
-                                </p>
-                            </div>
-                        </div>
+                        <h5>Your Top 5 Queries</h5>
+                        <ul class="top-list">
+                            {% for query in wrapped_data.top_queries %}
+                            <li>
+                                <span class="item-name">{{ query.query }}</span>
+                                <span class="item-clicks">{{ "{:,.0f}".format(query.clicks) }} clicks</span>
+                            </li>
+                            {% else %}
+                            <li>No query data found.</li>
+                            {% endfor %}
+                        </ul>
                     </div>
                 </div>
                 <div class="card mt-3">
