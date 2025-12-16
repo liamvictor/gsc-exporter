@@ -226,6 +226,28 @@ By default, the HTML report includes automatic brand-detection and has three tab
 
 It also includes the original **Pages to Queries** tab. If brand detection is disabled, the report reverts to the original two-tab format.
 
+### Advanced CSV Generation
+
+You can re-process an existing CSV to create smaller, more focused reports without re-downloading data. This is useful for analysing the top performing queries.
+
+*   `--top-queries <number>`: When used with `--csv`, this generates a new CSV file containing only the top N queries, sorted by total clicks.
+*   `--split-brand`: Use with `--top-queries` to generate two separate files: one for the top N brand queries and one for the top N non-brand queries.
+
+**Example:**
+
+After running an initial download, you can generate a report of just the top 100 brand and non-brand queries.
+
+```bash
+# First, run the full download (if you haven't already)
+python gsc-pages-queries.py https://www.example.com --last-12-months
+
+# Now, generate focused CSVs from the downloaded file
+python gsc-pages-queries.py --csv ./output/example.com/gsc-pages-queries-example-com-....csv --top-queries 100 --split-brand
+```
+This will create two new files:
+*   `...-top-100-brand-queries.csv`
+*   `...-top-100-non-brand-queries.csv`
+
 
 ---
 

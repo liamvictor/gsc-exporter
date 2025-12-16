@@ -411,6 +411,8 @@ def main():
     parser.add_argument('--no-brand-detection', action='store_true', help='Disable the automatic brand term detection.')
     parser.add_argument('--brand-terms', nargs='+', help='A list of additional brand terms to include in the analysis.')
     parser.add_argument('--brand-terms-file', help='Path to a text file containing brand terms, one per line.')
+    parser.add_argument('--top-queries', type=int, help='Generate a CSV with only the top N queries by clicks.')
+    parser.add_argument('--split-brand', action='store_true', help='When used with --top-queries, generates separate CSVs for brand and non-brand top queries.')
     
     args = parser.parse_args()
 
@@ -431,25 +433,44 @@ def main():
             return
         print(f"Generating report from CSV file: {args.csv}")
         df = pd.read_csv(args.csv)
+        # Determine the site_url for brand detection and HTML title purposes
+        processing_site_url = args.site_url # Prefer explicit site_url if provided
+        
         # Use placeholders for metadata as it cannot be inferred from the CSV alone
-        site_url = "Loaded from CSV"
         start_date = "N/A"
         end_date = "N/A"
-        # Try to parse info from filename for a better title
+        csv_inferred_site_url = "Loaded from CSV"
+
+        # Try to parse info from filename for a better title and potential site_url
         try:
             filename = os.path.basename(args.csv)
-            parts = filename.replace('gsc-pages-queries-', '').replace('.csv', '').split('-to-')
-            if len(parts) == 2:
-                end_date = parts[1]
-                remaining_parts = parts[0].split('-')
-                start_date = remaining_parts[-1]
-                # This is imperfect, but better than nothing
-                site_url = '-'.join(remaining_parts[:-1]).replace('-', '.')
+            # This regex tries to capture the site from filenames like 'gsc-pages-queries-hr-inform-co-uk-DATE-to-DATE.csv'
+            match = re.search(r'gsc-pages-queries-([\w-]+(?:-\w{2})?)(?:-full)?-\d{4}-\d{2}-\d{2}-to-\d{4}-\d{2}-\d{2}\.csv', filename)
+            if match:
+                # Add scheme for proper parsing by urlparse
+                csv_inferred_site_url = 'https://' + match.group(1).replace('-', '.')
+            else: # Fallback for simpler filenames
+                parts = filename.replace('gsc-pages-queries-', '').replace('.csv', '').split('-to-')
+                if len(parts) > 1:
+                    remaining_parts = parts[0].split('-')
+                    # Add scheme for proper parsing by urlparse
+                    csv_inferred_site_url = 'https://' + '-'.join(remaining_parts[:-1]).replace('-', '.')
+            
+            # If a site_url wasn't explicitly provided, use the one inferred from CSV
+            if not processing_site_url:
+                processing_site_url = csv_inferred_site_url
+
+            # Also try to get dates from filename for HTML report if not explicitly set
+            date_parts = re.search(r'(\d{4}-\d{2}-\d{2})-to-(\d{4}-\d{2}-\d{2})\.csv', filename)
+            if date_parts:
+                start_date = date_parts.group(1)
+                end_date = date_parts.group(2)
+
         except Exception:
             pass # Ignore parsing errors, placeholders will be used
 
+        site_url = processing_site_url # This is what will be used in the HTML title
         html_output_path = args.csv.replace('.csv', '.html')
-
     # --- Case 2: Download data or use cache ---
     else:
         # Add a correction for common typos in the site URL
@@ -562,9 +583,22 @@ def main():
         
         # Priority 2: Automatic file in /config (if no explicit file and brand detection is on)
         elif not args.no_brand_detection:
-            root_domain = get_root_domain(args.site_url or site_url)
-            if root_domain:
-                config_file_path = os.path.join('config', f'brand-terms-{root_domain.split(".")[0]}.txt')
+            hostname_for_brand_file = urlparse(args.site_url or processing_site_url).hostname
+            if hostname_for_brand_file:
+                # This logic determines the base name for the brand terms file e.g., 'hr.inform.co.uk' -> 'hr-inform'
+                key = hostname_for_brand_file
+                if key.startswith('www.'):
+                    key = key[4:]
+                
+                suffixes_to_remove = ['.com', '.co.uk', '.org', '.net', '.gov', '.edu', '.io', '.co']
+                for suffix in sorted(suffixes_to_remove, key=len, reverse=True):
+                    if key.endswith(suffix):
+                        key = key[:-len(suffix)]
+                        break
+                
+                brand_file_name = key.replace('.', '-')
+                config_file_path = os.path.join('config', f'brand-terms-{brand_file_name}.txt')
+
                 if os.path.exists(config_file_path):
                     with open(config_file_path, 'r') as f:
                         config_terms = [line.strip().lower() for line in f if line.strip()]
@@ -573,7 +607,7 @@ def main():
         
         # Priority 3: Auto-detection from URL (if brand detection is on and no other terms loaded yet)
         if not args.no_brand_detection and not brand_terms:
-            brand_terms.update(get_brand_terms(args.site_url or site_url))
+            brand_terms.update(get_brand_terms(args.site_url or processing_site_url))
 
         # Priority 4: --brand-terms from command line (always adds to the set)
         if args.brand_terms:
@@ -586,6 +620,51 @@ def main():
             # Use (?:...) for non-capturing group and re.escape for safety
             pattern = r'\b(?:' + '|'.join(re.escape(term) for term in brand_terms) + r')\b'
             df['brand_type'] = df['query'].str.contains(pattern, case=False, regex=True).map({True: 'Brand', False: 'Non-Brand'})
+
+
+        # --- Handle top_queries and split_brand CSV generation ---
+        if args.top_queries:
+            if not args.csv:
+                print("Warning: --top-queries is best used with --csv to operate on existing data. This run will filter the freshly downloaded data.")
+
+            # Calculate top queries based on total clicks
+            query_clicks = df.groupby('query')['clicks'].sum().sort_values(ascending=False)
+            
+            if args.split_brand:
+                if 'brand_type' not in df.columns:
+                    print("Error: --split-brand requires brand classification, but it's disabled or no terms were found. Skipping CSV generation.")
+                else:
+                    # Top N Brand Queries
+                    brand_queries = df[df['brand_type'] == 'Brand']['query'].unique()
+                    top_brand_queries = query_clicks[query_clicks.index.isin(brand_queries)].head(args.top_queries).index
+                    brand_df = df[df['query'].isin(top_brand_queries)]
+                    
+                    # Top N Non-Brand Queries
+                    non_brand_queries = df[df['brand_type'] == 'Non-Brand']['query'].unique()
+                    top_non_brand_queries = query_clicks[query_clicks.index.isin(non_brand_queries)].head(args.top_queries).index
+                    non_brand_df = df[df['query'].isin(top_non_brand_queries)]
+
+                    # Save the split files
+                    base_path = html_output_path.replace('.html', '')
+                    brand_csv_path = f"{base_path}-top-{args.top_queries}-brand-queries.csv"
+                    non_brand_csv_path = f"{base_path}-top-{args.top_queries}-non-brand-queries.csv"
+                    
+                    brand_df.to_csv(brand_csv_path, index=False, encoding='utf-8')
+                    print(f"Successfully created top brand queries CSV at {brand_csv_path}")
+                    
+                    non_brand_df.to_csv(non_brand_csv_path, index=False, encoding='utf-8')
+                    print(f"Successfully created top non-brand queries CSV at {non_brand_csv_path}")
+            else:
+                # Top N queries overall
+                top_queries_list = query_clicks.head(args.top_queries).index
+                top_df = df[df['query'].isin(top_queries_list)]
+                
+                # Save the combined file
+                base_path = html_output_path.replace('.html', '')
+                top_csv_path = f"{base_path}-top-{args.top_queries}-queries.csv"
+                top_df.to_csv(top_csv_path, index=False, encoding='utf-8')
+                print(f"Successfully created top queries CSV at {top_csv_path}")
+
 
         # Format for HTML report
         html_df = df.copy()
