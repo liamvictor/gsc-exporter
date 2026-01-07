@@ -2,6 +2,68 @@
 
 This repository contains a collection of Python scripts designed to connect to the Google Search Console (GSC) API, retrieve performance data, and export it into user-friendly formats like CSV and HTML reports.
 
+## Scripts at a Glance
+
+| Script | Description |
+| --- | --- |
+| `key-performance-metrics.py` | Fetches a high-level, 16-month overview of Clicks, Impressions, CTR, and Position. Ideal for a quick health check. |
+| `monthly-summary-report.py` | Provides a detailed summary for the last complete month, including unique query and page counts. |
+| `snapshot-report.py` | Gives a detailed snapshot for a single period, breaking data down by device and country. |
+| `performance-analysis.py` | Compares two time periods (e.g., month-over-month) to find performance changes, rising stars, and content decay. |
+| `queries-pages-analysis.py` | Extends `key-performance-metrics` by adding unique query and page counts to the 16-month view. |
+| `query-position-analysis.py` | Tracks the distribution of query ranking positions over 16 months, with charts to visualize the trends. |
+| `gsc-pages-queries.py` | Generates a detailed, interactive report to explore the relationship between specific queries and the pages they lead to. |
+| `gsc_pages_exporter.py` | Exports a simple, bulk list of all pages discovered within a given date range. |
+| `generate_gsc_wrapped.py` | Creates a fun, "Spotify Wrapped"-style annual summary of your site's GSC performance. |
+| `run_for_sites.py` | A utility script to run any of the above analysis scripts for a custom list of sites. |
+| `run_wrapped_for_all_properties.py` | A utility script to automate running the `generate_gsc_wrapped.py` script for every site you have access to. |
+
+## Typical Workflow
+
+Here is a recommended workflow for analyzing your GSC data, moving from a high-level overview to a detailed investigation.
+
+### 1. Get a High-Level Overview
+Start with a broad look at all your properties to spot trends or anomalies.
+```bash
+python key-performance-metrics.py
+```
+This will generate a report in `output/account/` showing the 16-month performance for all sites. Identify any sites that need a closer look.
+
+### 2. Get a Snapshot of a Single Site
+Once you've identified a site of interest, run the snapshot report to get a quick, detailed overview of its performance for the last month.
+```bash
+python snapshot-report.py https://www.example.com --last-month
+```
+
+### 3. Compare Performance Over Time
+To understand recent changes, compare the last month's performance to the previous month. This will highlight what's improved and what's declined.
+```bash
+python performance-analysis.py https://www.example.com --last-month
+```
+
+### 4. Investigate Query & Page Relationships
+If you notice a page has lost traffic, use this script to see which specific queries have dropped off for that page.
+```bash
+python gsc-pages-queries.py https://www.example.com --last-month
+```
+
+### 5. Analyse Ranking Distribution
+To see how your keyword rankings are distributed and trending over time, use the position analysis script. The charts make it easy to see if you are gaining or losing visibility in the top positions.
+```bash
+python query-position-analysis.py https://www.example.com
+```
+
+### 6. Run Reports for a Custom Group of Sites
+If you need to run any of these reports for a specific group of sites, use the `run_for_sites.py` utility. First, create a file like `my_sites.txt` and add your URLs.
+```bash
+# Example: my_sites.txt
+# https://www.site-a.com
+# https://www.site-b.co.uk
+
+# Now run the script
+python run_for_sites.py snapshot-report.py --sites-file my_sites.txt --last-7-days
+```
+
 The Setup instructions are given at the end of this documnet.
 
 ## Available Scripts
