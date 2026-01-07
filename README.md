@@ -209,7 +209,7 @@ python key-performance-metrics.py
 
 ### Output
 
-*   **Single Site**: Generates a CSV and an HTML file in `output/<hostname>/` showing monthly performance over the last 16 months.
+*   **Single Site**: Generates a CSV and an HTML file in `output/<hostname>/` showing monthly performance over the last 16 months. The HTML report includes numbers formatted for readability (e.g., 1,234).
 *   **All Sites**: Generates `output/account/` with a CSV and a comprehensive HTML report. The report includes an interactive index and intelligently sorts sites by root domain and subdomain type for easy navigation.
 
 ---
@@ -232,7 +232,7 @@ python queries-pages-analysis.py
 
 ### Output
 
-*   **Single Site**: Generates a CSV and an HTML file in `output/<hostname>/` with monthly data including unique query and page counts.
+*   **Single Site**: Generates a CSV and an HTML file in `output/<hostname>/` with monthly data including unique query and page counts. The HTML report includes numbers formatted for readability (e.g., 1,234).
 *   **All Sites**: Generates corresponding files in `output/account/` for an account-wide overview.
 
 ---
@@ -255,7 +255,7 @@ python query-position-analysis.py
 
 ### Output
 
-*   **Single Site**: Generates a CSV and an HTML file in `output/<hostname>/` detailing the monthly query position distribution.
+*   **Single Site**: Generates a CSV and an HTML file in `output/<hostname>/` detailing the monthly query position distribution. The HTML report includes numbers formatted for readability (e.g., 1,234).
 *   **All Sites**: Generates `output/account/` with a CSV and an HTML report providing an account-wide breakdown.
 ---
 

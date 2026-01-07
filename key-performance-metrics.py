@@ -131,15 +131,15 @@ def create_multi_site_html_report(df, sorted_sites):
 <body><div class="container-fluid"><h1 id="top">Account-Wide GSC Performance Report</h1><h2>Index</h2>{index_html}{site_sections_html}</div>
 <footer><p><a href="https://github.com/liamdelahunty/gsc-exporter" target="_blank">gsc-exporter</a></p></footer></body></html>"""
 
-def create_single_site_html_report(df, site_url):
+def create_single_site_html_report(df, report_title):
     """Generates a simplified HTML report for a single site."""
     df_no_site = df.drop(columns=['site_url'])
     report_body = df_no_site.to_html(classes="table table-striped table-hover", index=False, border=0)
     return f"""
 <!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>GSC Performance Report for {site_url}</title><link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<title>GSC Performance Report for {report_title}</title><link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 <style>body{{padding:2rem;}}h1{{border-bottom:2px solid #dee2e6;padding-bottom:.5rem;margin-top:2rem;}}.table thead th {{background-color: #434343;color: #ffffff;text-align: left;}}footer{{margin-top:3rem;text-align:center;color:#6c757d;}}</style></head>
-<body><div class="container-fluid"><h1>GSC Performance Report for {site_url}</h1><div class="table-responsive">{report_body}</div></div>
+<body><div class="container-fluid"><h1>GSC Performance Report for {report_title}</h1><div class="table-responsive">{report_body}</div></div>
 <footer><p><a href="https://github.com/liamdelahunty/gsc-exporter" target="_blank">gsc-exporter</a></p></footer></body></html>"""
 
 def generate_site_sections(df, sorted_sites):
@@ -246,6 +246,8 @@ def main():
         print(f"\nSuccessfully exported CSV to {csv_output_path}")
 
         html_df = df.copy()
+        html_df['clicks'] = html_df['clicks'].apply(lambda x: f"{x:,.0f}")
+        html_df['impressions'] = html_df['impressions'].apply(lambda x: f"{x:,.0f}")
         html_df['ctr'] = html_df['ctr'].apply(lambda x: f"{x:.2%}")
         html_df['position'] = html_df['position'].apply(lambda x: f"{x:.2f}")
 
