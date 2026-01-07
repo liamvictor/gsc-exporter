@@ -255,7 +255,7 @@ python query-position-analysis.py
 
 ### Output
 
-*   **Single Site**: Generates a CSV and an HTML file in `output/<hostname>/` detailing the monthly query position distribution. The HTML report includes numbers formatted for readability (e.g., 1,234).
+*   **Single Site**: Generates a CSV and an HTML file in `output/<hostname>/` detailing the monthly query position distribution. The HTML report includes numbers formatted for readability (e.g., 1,234) and line charts visualizing clicks and impressions by position, as well as total clicks and impressions over time.
 *   **All Sites**: Generates `output/account/` with a CSV and an HTML report providing an account-wide breakdown.
 ---
 

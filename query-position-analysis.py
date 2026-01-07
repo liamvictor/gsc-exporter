@@ -158,33 +158,162 @@ def create_multi_site_html_report(df, sorted_sites):
 <footer><p><a href="https://github.com/liamdelahunty/gsc-exporter" target="_blank">gsc-exporter</a></p></footer></body></html>"""
 
 def create_single_site_html_report(df, report_title):
-    """Generates a simplified HTML report for a single site."""
-    df_no_site = df.drop(columns=['site_url'])
-    for col in df_no_site.columns:
+    """Generates a simplified HTML report for a single site with charts."""
+    # Prepare data for the table
+    df_table = df.drop(columns=['site_url']).copy()
+    for col in df_table.columns:
         if ('clicks' in col or 'impressions' in col):
-            df_no_site[col] = df_no_site[col].apply(lambda x: f"{x:,.0f}")
-    report_body = df_no_site.to_html(classes="table table-striped table-hover", index=False, border=0)
+            df_table[col] = df_table[col].apply(lambda x: f"{x:,.0f}")
+    report_body = df_table.to_html(classes="table table-striped table-hover", index=False, border=0)
+
+    # Prepare data for charts
+    chart_data = df.sort_values(by='month').to_json(orient='records')
+
     return f"""
 <!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Query Position Report for {report_title}</title><link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-<style>body{{padding:2rem;}}h1{{border-bottom:2px solid #dee2e6;padding-bottom:.5rem;margin-top:2rem;}}.table thead th {{background-color: #434343;color: #ffffff;text-align: left;}}footer{{margin-top:3rem;text-align:center;color:#6c757d;}}</style></head>
-<body><div class="container-fluid"><h1>Query Position Report for {report_title}</h1><div class="table-responsive">{report_body}</div></div>
-<footer><p><a href="https://github.com/liamdelahunty/gsc-exporter" target="_blank">gsc-exporter</a></p></footer></body></html>"""
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>body{{padding:2rem;}}h1,h2{{border-bottom:2px solid #dee2e6;padding-bottom:.5rem;margin-top:2rem;}}.table thead th {{background-color: #434343;color: #ffffff;text-align: left;}}footer{{margin-top:3rem;text-align:center;color:#6c757d;}}</style></head>
+<body><div class="container-fluid"><h1>Query Position Report for {report_title}</h1>
+<div class="row my-4">
+    <div class="col-lg-6"><div class="card"><div class="card-header"><h3>Clicks by Position</h3></div><div class="card-body"><canvas id="clicksChart"></canvas></div></div></div>
+    <div class="col-lg-6"><div class="card"><div class="card-header"><h3>Impressions by Position</h3></div><div class="card-body"><canvas id="impressionsChart"></canvas></div></div></div>
+</div>
+<div class="row my-4">
+    <div class="col-lg-6"><div class="card"><div class="card-header"><h3>Total Clicks</h3></div><div class="card-body"><canvas id="totalClicksChart"></canvas></div></div></div>
+    <div class="col-lg-6"><div class="card"><div class="card-header"><h3>Total Impressions</h3></div><div class="card-body"><canvas id="totalImpressionsChart"></canvas></div></div></div>
+</div>
+<h2>Data Table</h2><div class="table-responsive">{report_body}</div></div>
+<footer><p><a href="https://github.com/liamdelahunty/gsc-exporter" target="_blank">gsc-exporter</a></p></footer>
+<script>
+    const data = {chart_data};
+    const labels = data.map(row => row.month);
+    const chartConfig = {{
+        'clicks': {{
+            'element': 'clicksChart',
+            'datasets': [
+                {{'label': 'Clicks Pos 1-3', 'data': data.map(row => row.clicks_pos_1_3), 'borderColor': 'rgba(75, 192, 192, 1)'}},
+                {{'label': 'Clicks Pos 4-10', 'data': data.map(row => row.clicks_pos_4_10), 'borderColor': 'rgba(54, 162, 235, 1)'}},
+                {{'label': 'Clicks Pos 11-20', 'data': data.map(row => row.clicks_pos_11_20), 'borderColor': 'rgba(255, 206, 86, 1)'}},
+                {{'label': 'Clicks Pos 21+', 'data': data.map(row => row.clicks_pos_21_plus), 'borderColor': 'rgba(255, 99, 132, 1)'}}
+            ]
+        }},
+        'impressions': {{
+            'element': 'impressionsChart',
+            'datasets': [
+                {{'label': 'Impressions Pos 1-3', 'data': data.map(row => row.impressions_pos_1_3), 'borderColor': 'rgba(75, 192, 192, 1)'}},
+                {{'label': 'Impressions Pos 4-10', 'data': data.map(row => row.impressions_pos_4_10), 'borderColor': 'rgba(54, 162, 235, 1)'}},
+                {{'label': 'Impressions Pos 11-20', 'data': data.map(row => row.impressions_pos_11_20), 'borderColor': 'rgba(255, 206, 86, 1)'}},
+                {{'label': 'Impressions Pos 21+', 'data': data.map(row => row.impressions_pos_21_plus), 'borderColor': 'rgba(255, 99, 132, 1)'}}
+            ]
+        }},
+        'total_clicks': {{
+            'element': 'totalClicksChart',
+            'datasets': [
+                {{'label': 'Total Clicks', 'data': data.map(row => row.total_clicks), 'borderColor': 'rgba(153, 102, 255, 1)'}}
+            ]
+        }},
+        'total_impressions': {{
+            'element': 'totalImpressionsChart',
+            'datasets': [
+                {{'label': 'Total Impressions', 'data': data.map(row => row.total_impressions), 'borderColor': 'rgba(255, 159, 64, 1)'}}
+            ]
+        }}
+    }};
+    for (const [key, config] of Object.entries(chartConfig)) {{
+        new Chart(document.getElementById(config.element), {{
+            type: 'line',
+            data: {{
+                labels: labels,
+                datasets: config.datasets.map(ds => ({{...ds, fill: false, tension: 0.1}}))
+            }},
+            options: {{ scales: {{ y: {{ beginAtZero: true }} }} }}
+        }});
+    }}
+</script>
+</body></html>"""
 
 def generate_site_sections(df, sorted_sites):
-    """Generates HTML sections for each site."""
+    """Generates HTML sections for each site, including charts."""
     sections_html = ''
-    for site in sorted_sites:
+    for i, site in enumerate(sorted_sites):
         anchor = site.replace('https://', '').replace('http://', '').replace(':', '-').replace('/', '-').replace('.', '-')
         sections_html += f'<h2 id="{anchor}" class="mt-5">{site}</h2>'
         site_df = df[df['site_url'] == site].drop(columns=['site_url'])
+        
         if not site_df.empty:
-            for col in site_df.columns:
+            # Chart data
+            chart_data_json = site_df.sort_values(by='month').to_json(orient='records')
+            
+            # Table data
+            table_df = site_df.copy()
+            for col in table_df.columns:
                 if ('clicks' in col or 'impressions' in col):
-                    site_df[col] = site_df[col].apply(lambda x: f"{x:,.0f}")
-            sections_html += '<div class="table-responsive">'
-            sections_html += site_df.to_html(classes="table table-striped table-hover", index=False, border=0)
-            sections_html += '</div><p><a href="#top">Back to Top</a></p>'
+                    table_df[col] = table_df[col].apply(lambda x: f"{{x:,.0f}}")
+            
+            table_html = table_df.to_html(classes="table table-striped table-hover", index=False, border=0)
+
+            sections_html += f"""
+            <div class="row my-4">
+                <div class="col-lg-6"><div class="card"><div class="card-header"><h3>Clicks by Position</h3></div><div class="card-body"><canvas id="clicksChart-{i}"></canvas></div></div></div>
+                <div class="col-lg-6"><div class="card"><div class="card-header"><h3>Impressions by Position</h3></div><div class="card-body"><canvas id="impressionsChart-{i}"></canvas></div></div></div>
+            </div>
+            <div class="row my-4">
+                <div class="col-lg-6"><div class="card"><div class="card-header"><h3>Total Clicks</h3></div><div class="card-body"><canvas id="totalClicksChart-{i}"></canvas></div></div></div>
+                <div class="col-lg-6"><div class="card"><div class="card-header"><h3>Total Impressions</h3></div><div class="card-body"><canvas id="totalImpressionsChart-{i}"></canvas></div></div></div>
+            </div>
+            <h2>Data Table for {site}</h2>
+            <div class="table-responsive">{table_html}</div>
+            <p><a href="#top">Back to Top</a></p>
+            <script>
+                (function() {{
+                    const data = {chart_data_json};
+                    const labels = data.map(row => row.month);
+                    const chartConfig = {{
+                        'clicks': {{
+                            'element': 'clicksChart-{i}',
+                            'datasets': [
+                                {{'label': 'Clicks Pos 1-3', 'data': data.map(row => row.clicks_pos_1_3), 'borderColor': 'rgba(75, 192, 192, 1)'}},
+                                {{'label': 'Clicks Pos 4-10', 'data': data.map(row => row.clicks_pos_4_10), 'borderColor': 'rgba(54, 162, 235, 1)'}},
+                                {{'label': 'Clicks Pos 11-20', 'data': data.map(row => row.clicks_pos_11_20), 'borderColor': 'rgba(255, 206, 86, 1)'}},
+                                {{'label': 'Clicks Pos 21+', 'data': data.map(row => row.clicks_pos_21_plus), 'borderColor': 'rgba(255, 99, 132, 1)'}}
+                            ]
+                        }},
+                        'impressions': {{
+                            'element': 'impressionsChart-{i}',
+                            'datasets': [
+                                {{'label': 'Impressions Pos 1-3', 'data': data.map(row => row.impressions_pos_1_3), 'borderColor': 'rgba(75, 192, 192, 1)'}},
+                                {{'label': 'Impressions Pos 4-10', 'data': data.map(row => row.impressions_pos_4_10), 'borderColor': 'rgba(54, 162, 235, 1)'}},
+                                {{'label': 'Impressions Pos 11-20', 'data': data.map(row => row.impressions_pos_11_20), 'borderColor': 'rgba(255, 206, 86, 1)'}},
+                                {{'label': 'Impressions Pos 21+', 'data': data.map(row => row.impressions_pos_21_plus), 'borderColor': 'rgba(255, 99, 132, 1)'}}
+                            ]
+                        }},
+                        'total_clicks': {{
+                            'element': 'totalClicksChart-{i}',
+                            'datasets': [
+                                {{'label': 'Total Clicks', 'data': data.map(row => row.total_clicks), 'borderColor': 'rgba(153, 102, 255, 1)'}}
+                            ]
+                        }},
+                        'total_impressions': {{
+                            'element': 'totalImpressionsChart-{i}',
+                            'datasets': [
+                                {{'label': 'Total Impressions', 'data': data.map(row => row.total_impressions), 'borderColor': 'rgba(255, 159, 64, 1)'}}
+                            ]
+                        }}
+                    }};
+                    for (const [key, config] of Object.entries(chartConfig)) {{
+                        new Chart(document.getElementById(config.element), {{
+                            type: 'line',
+                            data: {{
+                                labels: labels,
+                                datasets: config.datasets.map(ds => ({{...ds, fill: false, tension: 0.1}}))
+                            }},
+                            options: {{ scales: {{ y: {{ beginAtZero: true }} }} }}
+                        }});
+                    }}
+                }})();
+            </script>
+            """
         else:
             sections_html += '<p>No data available for this site.</p><p><a href="#top">Back to Top</a></p>'
     return sections_html
