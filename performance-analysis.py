@@ -484,6 +484,22 @@ def create_html_report(page_title, current_period_str, previous_period_str, df_b
     def df_to_html(df, table_id):
         if df.empty:
             return "<p>No data available for this section.</p>"
+        
+        # Format CTR and Position columns first
+        for col_name in ['ctr_current', 'ctr_previous']:
+            if col_name in df.columns:
+                df[col_name] = df[col_name].apply(lambda x: f"{x:.2%}")
+        for col_name in ['position_current', 'position_previous']:
+            if col_name in df.columns:
+                df[col_name] = df[col_name].apply(lambda x: f"{x:.2f}")
+
+        # Format Clicks and Impressions columns with comma separators
+        for col in df.columns:
+            if 'clicks' in col or 'impressions' in col:
+                # Ensure the column is numeric before formatting
+                df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
+                df[col] = df[col].apply(lambda x: f"{int(x):,}") # Format as integer with commas
+
         return df.to_html(classes="table table-striped table-hover", index=False, table_id=table_id, border=0)
 
     html_template = f"""

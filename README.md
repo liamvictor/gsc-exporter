@@ -168,7 +168,7 @@ Fetches and compares key performance metrics (clicks, impressions, CTR, position
 
 ### Output
 
-Generates a detailed CSV file containing the merged data from both periods (if downloading) and an HTML report that highlights best/worst performing content, rising stars, and more.
+Generates a detailed CSV file containing the merged data from both periods (if downloading) and an HTML report that highlights best/worst performing content, rising stars, and more. The HTML report includes clicks and impressions formatted for readability (e.g., 1,234).
 
 ---
 
@@ -187,7 +187,7 @@ python snapshot-report.py <site_url> [date_range_option]
 
 ### Output
 
-Generates a CSV with detailed page data and an HTML report in `output/<hostname>/`. The report includes top pages, performance by device/country, and optimization opportunities.
+Generates a CSV with detailed page data and an HTML report in `output/<hostname>/`. The report includes top pages, performance by device/country, and optimization opportunities. The HTML report also includes clicks and impressions formatted for readability (e.g., 1,234).
 
 ---
 

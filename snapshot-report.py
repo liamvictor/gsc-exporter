@@ -301,6 +301,13 @@ def create_snapshot_html_report(page_title, period_str, df_top_clicks, df_top_im
         if 'position' in df.columns:
             df['position'] = df['position'].apply(lambda x: f"{x:.2f}")
 
+        # Add formatting for clicks and impressions
+        for col in df.columns:
+            if 'clicks' in col or 'impressions' in col:
+                # Ensure the column is numeric before formatting
+                df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
+                df[col] = df[col].apply(lambda x: f"{int(x):,}") # Format as integer with commas
+
         return df.to_html(classes="table table-striped table-hover", index=False, table_id=table_id, border=0, float_format=float_format)
 
     html_template = f"""
