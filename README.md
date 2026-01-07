@@ -190,7 +190,7 @@ python page-level-report.py <site_url> [date_range_option]
 
 ### Output
 
-Generates a CSV and an HTML file in `output/<hostname>/`. The report lists all pages with their aggregated performance metrics (including average position) and the count of unique queries driving traffic to them, sorted by clicks in descending order.
+Generates a CSV and an HTML file in `output/<hostname>/`. The report lists all pages with their aggregated performance metrics (including average position) and the count of unique queries driving traffic to them, sorted by clicks in descending order. The HTML report also includes a summary table with overall totals.
 
 ### Advanced CSV Generation
 
