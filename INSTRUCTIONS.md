@@ -1,6 +1,6 @@
-Of course. The table headers (`<thead>`) in the HTML reports are generated automatically by the Pandas `to_html()` function. You can adjust their style by adding custom CSS rules to the `<style>` block within the HTML template in each script.
+Table headers (`<thead>`) in the HTML reports are generated automatically by the Pandas `to_html()` function. You can adjust their style by adding custom CSS rules to the `<style>` block within the HTML template in each script.
 
-Here is how you can do it for the `key-performance-metrics.py` script. The same logic applies to the other scripts you asked me to modify.
+Here is how you can do it for the `key-performance-metrics.py` script. The same logic applies to the other scripts.
 
 ### Step 1: Locate the HTML Template
 
@@ -45,4 +45,3 @@ You can apply the same change to the HTML template strings in:
 *   `queries-pages-analysis.py`
 *   `query-position-analysis.py`
 
-Let me know if you would like me to apply this change to all the relevant files for you.

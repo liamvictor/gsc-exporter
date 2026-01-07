@@ -2,41 +2,7 @@
 
 This repository contains a collection of Python scripts designed to connect to the Google Search Console (GSC) API, retrieve performance data, and export it into user-friendly formats like CSV and HTML reports.
 
-## Setup
-
-### 1. Google Cloud Project & API Credentials
-
-Before you can use these scripts, you need to enable the Google Search Console API and obtain credentials.
-
-1.  **Create a Google Cloud Project:**
-    *   Go to the [Google Cloud Console](https://console.cloud.google.com/).
-    *   Create a new project or use an existing one.
-
-2.  **Enable the Google Search Console API:**
-    *   In your project, go to "APIs & Services" > "Library".
-    *   Search for "Google Search Console API" and enable it.
-
-3.  **Create OAuth 2.0 Credentials:**
-    *   Go to "APIs & Services" > "Credentials".
-    *   Click "Create Credentials" and choose "OAuth client ID".
-    *   If prompted, configure the consent screen. For "User Type," select "External" if you're using a personal Google account, and fill in the required app information. Add your email to the "Test users" section.
-    *   For the "Application type," select "Desktop app".
-    *   Click "Create." A window will appear with your client ID and client secret.
-    *   Click the "Download JSON" button to download your credentials.
-    *   **Rename the downloaded file to `client_secret.json` and place it in the root directory of this project.**
-
-### 2. Install Dependencies
-
-Install the necessary Python libraries using pip:
-
-```bash
-pip install -r requirements.txt
-```
-
-### First-Time Authorization
-The first time you run any of these scripts, a new tab will open in your web browser, asking for your consent to access your GSC data. After you approve, the script will create a `token.json` file to store your authorization, so you won't have to re-authorize on subsequent runs.
-
----
+The Setup instructions are given at the end of this documnet.
 
 ## Available Scripts
 
@@ -54,81 +20,7 @@ This suite includes several scripts for different types of analysis:
 
 ---
 
-## gsc_pages_exporter.py---
-## generate_gsc_wrapped.py
-
-Creates a "Google Organic Wrapped"-style annual summary for a single GSC property, presenting your year in search in a fun, engaging format.
-
-### Usage
-
-The script has two main modes of operation:
-
-1.  **Download Data from GSC:**
-    ```bash
-    python generate_gsc_wrapped.py <site_url> [date_range_option] [options]
-    ```
-
-2.  **Generate Report from CSV:**
-    ```bash
-    python generate_gsc_wrapped.py --csv <path_to_file.csv> [options]
-    ```
-
-### Arguments
-
-*   `<site_url>`: The full URL of the site property (e.g., `https://www.example.com`) or a domain property (e.g., `sc-domain:example.com`). This is required unless `--csv` is used, but highly recommended for full functionality (e.g., 'Monthly Performance' calculations and brand term auto-detection).
-*   `--csv <path>`: Path to an existing CSV file to use as the data source, skipping most GSC API calls. The CSV must contain at least `"page"`, `"query"`, `"clicks"`, and `"impressions"` columns. Date range flags are ignored when `--csv` is used.
-
-*   **Date Range Options**:
-    *   By default, a YTD report is generated.
-    *   `--last-12-months`: Analyze the last 12 complete months.
-    *   `--start-date YYYY-MM-DD` and `--end-date YYYY-MM-DD`: Specify a custom date range.
-
-*   **Brand Analysis Options**:
-    *   `--brand-terms <term1> <term2> ...`: Specify brand terms directly on the command line.
-    *   `--brand-terms-file <path>`: Provide a path to a text file containing brand terms (one per line).
-    *   `--no-brand-detection`: Disable the brand vs. non-brand classification.
-
-### Features
-
-*   **Enhanced Monthly Metrics**: The report now includes a 2x2 grid displaying monthly performance highlights for:
-    *   Busiest Month (by Clicks)
-    *   Top Impression Month
-    *   Highest CTR Month
-    *   Best Position Month
-*   **Clickable Top Pages**: URLs in the "Your Top 5 Pages" list are now clickable and open in a new browser tab.
-
-### Output
-
-Generates a visually engaging HTML report that highlights key metrics, top pages, and monthly performance.
-*   Reports are saved in `output/<hostname>/`.
-*   To prevent overwriting, `sc-domain:` properties are saved in directories prefixed with `sc-domain-` (e.g., `output/sc-domain-example.com/`).
-
----
-## run_for_all_properties.py
-
-Executes the `generate_gsc_wrapped.py` script for every Google Search Console property you have access to. This automates the process of generating "Wrapped" reports across your entire portfolio of sites.
-
-### Usage
-
-```bash
-python run_for_all_properties.py [options_for_generate_gsc_wrapped.py]
-```
-
-All command-line arguments passed to `run_for_all_properties.py` (e.g., `--last-12-months`, `--no-brand-detection`, `--brand-terms-file`) will be forwarded to each execution of `generate_gsc_wrapped.py`.
-
-### Example
-
-To generate "Wrapped" reports for all properties for the last 12 months:
-
-```bash
-python run_for_all_properties.py --last-12-months
-```
-
-### Output
-
-The script will print real-time output from each `generate_gsc_wrapped.py` run to your console. HTML reports will be saved in their respective property-specific directories under the `output/` folder, following the naming conventions described in the `generate_gsc_wrapped.py` section.
-
-
+## gsc_pages_exporter.py
 
 ### Usage
 
@@ -395,3 +287,113 @@ This will generate a report for all sites you have access to, aggregating data f
     *   A warning (*) if unique query or page counts might be truncated due to Google Search Console API limits, with a note explaining the truncation.
 *   **CSV Report**: An accompanying CSV file with the raw data.
 
+
+
+## generate_gsc_wrapped.py
+
+Creates a "Google Organic Wrapped"-style annual summary for a single GSC property, presenting your year in search in a fun, engaging format.
+
+### Usage
+
+The script has two main modes of operation:
+
+1.  **Download Data from GSC:**
+    ```bash
+    python generate_gsc_wrapped.py <site_url> [date_range_option] [options]
+    ```
+
+2.  **Generate Report from CSV:**
+    ```bash
+    python generate_gsc_wrapped.py --csv <path_to_file.csv> [options]
+    ```
+
+### Arguments
+
+*   `<site_url>`: The full URL of the site property (e.g., `https://www.example.com`) or a domain property (e.g., `sc-domain:example.com`). This is required unless `--csv` is used, but highly recommended for full functionality (e.g., 'Monthly Performance' calculations and brand term auto-detection).
+*   `--csv <path>`: Path to an existing CSV file to use as the data source, skipping most GSC API calls. The CSV must contain at least `"page"`, `"query"`, `"clicks"`, and `"impressions"` columns. Date range flags are ignored when `--csv` is used.
+
+*   **Date Range Options**:
+    *   By default, a YTD report is generated.
+    *   `--last-12-months`: Analyze the last 12 complete months.
+    *   `--start-date YYYY-MM-DD` and `--end-date YYYY-MM-DD`: Specify a custom date range.
+
+*   **Brand Analysis Options**:
+    *   `--brand-terms <term1> <term2> ...`: Specify brand terms directly on the command line.
+    *   `--brand-terms-file <path>`: Provide a path to a text file containing brand terms (one per line).
+    *   `--no-brand-detection`: Disable the brand vs. non-brand classification.
+
+### Features
+
+*   **Enhanced Monthly Metrics**: The report now includes a 2x2 grid displaying monthly performance highlights for:
+    *   Busiest Month (by Clicks)
+    *   Top Impression Month
+    *   Highest CTR Month
+    *   Best Position Month
+*   **Clickable Top Pages**: URLs in the "Your Top 5 Pages" list are now clickable and open in a new browser tab.
+
+### Output
+
+Generates a visually engaging HTML report that highlights key metrics, top pages, and monthly performance.
+*   Reports are saved in `output/<hostname>/`.
+*   To prevent overwriting, `sc-domain:` properties are saved in directories prefixed with `sc-domain-` (e.g., `output/sc-domain-example.com/`).
+
+---
+## run_wrapped_for_all_properties.py
+
+Executes the `generate_gsc_wrapped.py` script for every Google Search Console property you have access to. This automates the process of generating "Wrapped" reports across your entire portfolio of sites.
+
+### Usage
+
+```bash
+python run_for_all_properties.py [options_for_generate_gsc_wrapped.py]
+```
+
+All command-line arguments passed to `run_for_all_properties.py` (e.g., `--last-12-months`, `--no-brand-detection`, `--brand-terms-file`) will be forwarded to each execution of `generate_gsc_wrapped.py`.
+
+### Example
+
+To generate "Wrapped" reports for all properties for the last 12 months:
+
+```bash
+python run_for_all_properties.py --last-12-months
+```
+
+### Output
+
+The script will print real-time output from each `generate_gsc_wrapped.py` run to your console. HTML reports will be saved in their respective property-specific directories under the `output/` folder, following the naming conventions described in the `generate_gsc_wrapped.py` section.
+
+---
+
+## Setup
+
+### 1. Google Cloud Project & API Credentials
+
+Before you can use these scripts, you need to enable the Google Search Console API and obtain credentials.
+
+1.  **Create a Google Cloud Project:**
+    *   Go to the [Google Cloud Console](https://console.cloud.google.com/).
+    *   Create a new project or use an existing one.
+
+2.  **Enable the Google Search Console API:**
+    *   In your project, go to "APIs & Services" > "Library".
+    *   Search for "Google Search Console API" and enable it.
+
+3.  **Create OAuth 2.0 Credentials:**
+    *   Go to "APIs & Services" > "Credentials".
+    *   Click "Create Credentials" and choose "OAuth client ID".
+    *   If prompted, configure the consent screen. For "User Type," select "External" if you're using a personal Google account, and fill in the required app information. Add your email to the "Test users" section.
+    *   For the "Application type," select "Desktop app".
+    *   Click "Create." A window will appear with your client ID and client secret.
+    *   Click the "Download JSON" button to download your credentials.
+    *   **Rename the downloaded file to `client_secret.json` and place it in the root directory of this project.**
+
+### 2. Install Dependencies
+
+Install the necessary Python libraries using pip:
+
+```bash
+pip install -r requirements.txt
+```
+
+### First-Time Authorization
+The first time you run any of these scripts, a new tab will open in your web browser, asking for your consent to access your GSC data. After you approve, the script will create a `token.json` file to store your authorization, so you won't have to re-authorize on subsequent runs.
