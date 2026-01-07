@@ -13,9 +13,11 @@ This repository contains a collection of Python scripts designed to connect to t
 | `queries-pages-analysis.py` | Extends `key-performance-metrics` by adding unique query and page counts to the 16-month view. |
 | `query-position-analysis.py` | Tracks the distribution of query ranking positions over 16 months, with charts to visualize the trends. |
 | `gsc-pages-queries.py` | Generates a detailed, interactive report to explore the relationship between specific queries and the pages they lead to. |
+| `page-level-report.py` | Generates a page-level report including clicks, impressions, CTR, and unique query counts for each URL. |
 | `gsc_pages_exporter.py` | Exports a simple, bulk list of all pages discovered within a given date range. |
 | `generate_gsc_wrapped.py` | Creates a fun, "Spotify Wrapped"-style annual summary of your site's GSC performance. |
 | `run_for_sites.py` | A utility script to run any of the above analysis scripts for a custom list of sites. |
+| `run_all_reports_for_site.py` | A composite script to run all primary, monthly useful analysis reports for a single domain. |
 | `run_wrapped_for_all_properties.py` | A utility script to automate running the `generate_gsc_wrapped.py` script for every site you have access to. |
 
 ## Typical Workflow
@@ -41,19 +43,25 @@ To understand recent changes, compare the last month's performance to the previo
 python performance-analysis.py https://www.example.com --last-month
 ```
 
-### 4. Investigate Query & Page Relationships
+### 4. Get a Page-Level Overview
+To get a high-level view of how each page is performing and how many queries are driving traffic to it, use the new page-level report.
+```bash
+python page-level-report.py https://www.example.com --last-month
+```
+
+### 5. Investigate Query & Page Relationships
 If you notice a page has lost traffic, use this script to see which specific queries have dropped off for that page.
 ```bash
 python gsc-pages-queries.py https://www.example.com --last-month
 ```
 
-### 5. Analyse Ranking Distribution
+### 6. Analyse Ranking Distribution
 To see how your keyword rankings are distributed and trending over time, use the position analysis script. The charts make it easy to see if you are gaining or losing visibility in the top positions.
 ```bash
 python query-position-analysis.py https://www.example.com
 ```
 
-### 6. Run Reports for a Custom Group of Sites
+### 7. Run Reports for a Custom Group of Sites
 If you need to run any of these reports for a specific group of sites, use the `run_for_sites.py` utility. First, create a file like `my_sites.txt` and add your URLs.
 ```bash
 # Example: my_sites.txt
@@ -71,8 +79,9 @@ The Setup instructions are given at the end of this documnet.
 This suite includes several scripts for different types of analysis:
 
 *   [gsc_pages_exporter.py](#gsc_pages_exporter.py)
-*   [gsc-pages-queries.py](#gsc-pages-queries.py)
-*   [key-performance-metrics.py](#key-performance-metrics)
+*   [gsc-pages-queries.py](#gsc-pages-queriespy)
+*   [page-level-report.py](#page-level-reportpy)
+*   [key-performance-metrics.py](#key-performance-metricspy)
 *   [monthly-summary-report.py](#monthly-summary-report)
 *   [performance-analysis.py](#performance-analysis)
 *   [queries-pages-analysis.py](#queries-pages-analysis)
@@ -162,6 +171,26 @@ By default, the HTML report includes automatic brand-detection and has three tab
 3.  **All Queries**: A combined view of all queries.
 
 It also includes the original **Pages to Queries** tab. If brand detection is disabled, the report reverts to the original two-tab format.
+
+---
+
+## page-level-report.py
+
+Generates a page-level report showing the total clicks, impressions, CTR, and the number of unique queries for each page.
+
+### Usage
+
+```bash
+python page-level-report.py <site_url> [date_range_option]
+```
+
+*   `<site_url>`: (Required) The full URL of the site property (e.g., `https://www.example.com`) or a domain property (e.g., `sc-domain:example.com`).
+
+*   **Date Range Options**: Options like `--last-7-days`, `--last-month`, etc., are available. If omitted, it defaults to the last calendar month.
+
+### Output
+
+Generates a CSV and an HTML file in `output/<hostname>/`. The report lists all pages with their aggregated performance metrics and the count of unique queries driving traffic to them, sorted by clicks in descending order.
 
 ### Advanced CSV Generation
 
@@ -458,6 +487,26 @@ To run `snapshot-report.py` for all sites listed in `my_sites.txt` for the last 
 # https://www.croneri.co.uk
 
 python run_for_sites.py snapshot-report.py --sites-file my_sites.txt --last-7-days
+```
+
+---
+
+## run_all_reports_for_site.py
+
+Executes all primary, monthly useful analysis scripts for a single specified Google Search Console property. This automates the generation of a full suite of common reports for a given site.
+
+### Usage
+
+```bash
+python run_all_reports_for_site.py <site_url> [additional_arguments_for_scripts]
+```
+The `<site_url>` is the full URL of the site property (e.g., `https://www.example.com`) or a domain property (e.g., `sc-domain:example.com`). Any `additional_arguments_for_scripts` provided will be passed to each individual analysis script (e.g., `--last-month`, `--compare-to-previous-year`).
+
+### Example
+
+To run all reports for `https://www.example.com` for the last complete month:
+```bash
+python run_all_reports_for_site.py https://www.example.com --last-month
 ```
 
 ---
