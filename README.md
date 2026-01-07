@@ -13,7 +13,7 @@ This repository contains a collection of Python scripts designed to connect to t
 | `queries-pages-analysis.py` | Extends `key-performance-metrics` by adding unique query and page counts to the 16-month view. |
 | `query-position-analysis.py` | Tracks the distribution of query ranking positions over 16 months, with charts to visualize the trends. |
 | `gsc-pages-queries.py` | Generates a detailed, interactive report to explore the relationship between specific queries and the pages they lead to. |
-| `page-level-report.py` | Generates a page-level report including clicks, impressions, CTR, and unique query counts for each URL. |
+| `page-level-report.py` | Generates a page-level report including clicks, impressions, CTR, position, and unique query counts for each URL. |
 | `gsc_pages_exporter.py` | Exports a simple, bulk list of all pages discovered within a given date range. |
 | `generate_gsc_wrapped.py` | Creates a fun, "Spotify Wrapped"-style annual summary of your site's GSC performance. |
 | `run_for_sites.py` | A utility script to run any of the above analysis scripts for a custom list of sites. |
@@ -176,7 +176,7 @@ It also includes the original **Pages to Queries** tab. If brand detection is di
 
 ## page-level-report.py
 
-Generates a page-level report showing the total clicks, impressions, CTR, and the number of unique queries for each page.
+Generates a page-level report showing the total clicks, impressions, CTR, average position, and the number of unique queries for each page.
 
 ### Usage
 
@@ -190,7 +190,7 @@ python page-level-report.py <site_url> [date_range_option]
 
 ### Output
 
-Generates a CSV and an HTML file in `output/<hostname>/`. The report lists all pages with their aggregated performance metrics and the count of unique queries driving traffic to them, sorted by clicks in descending order.
+Generates a CSV and an HTML file in `output/<hostname>/`. The report lists all pages with their aggregated performance metrics (including average position) and the count of unique queries driving traffic to them, sorted by clicks in descending order.
 
 ### Advanced CSV Generation
 

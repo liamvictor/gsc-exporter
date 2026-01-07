@@ -125,6 +125,7 @@ def create_html_report(df, report_title, period_str):
     df_html['impressions'] = df_html['impressions'].apply(lambda x: f"{int(x):,}")
     df_html['query_count'] = df_html['query_count'].apply(lambda x: f"{int(x):,}")
     df_html['ctr'] = df_html['ctr'].apply(lambda x: f"{x:.2%}")
+    df_html['position'] = df_html['position'].apply(lambda x: f"{x:.2f}")
     
     report_body = df_html.to_html(classes="table table-striped table-hover", index=False, border=0)
 
@@ -225,18 +226,32 @@ def main():
         return
 
     # Process the data
+    # Calculate impression-weighted position
+    df_raw['impression_weighted_position'] = df_raw['impressions'] * df_raw['position']
+
     page_level_data = df_raw.groupby('page').agg(
         clicks=('clicks', 'sum'),
         impressions=('impressions', 'sum'),
+        impression_weighted_position=('impression_weighted_position', 'sum'),
         query_count=('query', 'nunique')
     ).reset_index()
 
-    # Calculate CTR safely, avoiding division by zero
+    # Calculate CTR and Position safely, avoiding division by zero
     page_level_data['ctr'] = page_level_data.apply(
         lambda row: row['clicks'] / row['impressions'] if row['impressions'] > 0 else 0,
         axis=1
     )
+    page_level_data['position'] = page_level_data.apply(
+        lambda row: row['impression_weighted_position'] / row['impressions'] if row['impressions'] > 0 else 0,
+        axis=1
+    )
+    
+    # Drop the intermediate column
+    page_level_data.drop(columns=['impression_weighted_position'], inplace=True)
 
+    # Reorder columns
+    page_level_data = page_level_data[['page', 'clicks', 'impressions', 'ctr', 'position', 'query_count']]
+    
     # Sort by clicks
     page_level_data = page_level_data.sort_values(by='clicks', ascending=False)
     

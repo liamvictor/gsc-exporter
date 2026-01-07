@@ -6,7 +6,7 @@ def show_help():
     scripts_info = {
         "gsc_pages_exporter.py": "Exports all known pages from a GSC property for a given date range into CSV and HTML files.",
         "gsc-pages-queries.py": "Generates a detailed report showing the relationship between queries and the pages they drive traffic to, and vice-versa. The output is a CSV file and an interactive HTML report.",
-        "page-level-report.py": "Generates a page-level report including clicks, impressions, CTR, and unique query counts for each URL.",
+        "page-level-report.py": "Generates a page-level report including clicks, impressions, CTR, position, and unique query counts for each URL.",
         "performance-analysis.py": "Fetches and compares key performance metrics (clicks, impressions, CTR, position) between two time periods to identify trends. The output is a detailed CSV file and an HTML report.",
         "snapshot-report.py": "Provides a single-period overview of GSC performance, presenting various observations to understand a site's organic search presence. The output is a CSV file and an HTML report.",
         "key-performance-metrics.py": "Provides a monthly overview of key performance metrics (clicks, impressions, CTR, average position). It can run for a single site or for all properties in a GSC account. The output is a CSV file and an HTML report.",
