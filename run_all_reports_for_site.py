@@ -33,11 +33,13 @@ def main():
 
     site_url = args.site_url
 
-    # List of primary analysis scripts to run
+    # List of primary analysis scripts to run.
+    # generate_gsc_wrapped.py amd monthly-summary-report.py not included.
     analysis_scripts = [
         "gsc-pages-queries.py",
         "gsc_pages_exporter.py",
         "key-performance-metrics.py",
+        "page-level-report.py", 
         "performance-analysis.py",
         "queries-pages-analysis.py",
         "query-position-analysis.py",
