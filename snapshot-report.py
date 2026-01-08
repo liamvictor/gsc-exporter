@@ -138,9 +138,11 @@ def main():
     """Main function to run the snapshot report."""
     parser = argparse.ArgumentParser(description='Generate a single-period performance snapshot from Google Search Console.')
     parser.add_argument('site_url', help='The URL of the site to analyse. Use sc-domain: for a domain property.')
+    parser.add_argument('--use-cache', action='store_true', help='Use cached CSV files from a previous run if they exist.')
 
     date_group = parser.add_mutually_exclusive_group()
     date_group.add_argument('--start-date', help='Start date in YYYY-MM-DD format.')
+    date_group.add_argument('--end-date', help='End date in YYYY-MM-DD format. Used only with --start-date.')
     date_group.add_argument('--last-24-hours', action='store_true', help='Use the last 24 hours for the report.')
     date_group.add_argument('--last-7-days', action='store_true', help='Use the last 7 days for the report.')
     date_group.add_argument('--last-28-days', action='store_true', help='Use the last 28 days for the report.')
@@ -150,8 +152,6 @@ def main():
     date_group.add_argument('--last-6-months', action='store_true', help='Use the last 6 months for the report.')
     date_group.add_argument('--last-12-months', action='store_true', help='Use the last 12 months for the report.')
     date_group.add_argument('--last-16-months', action='store_true', help='Use the last 16 months for the report.')
-
-    parser.add_argument('--end-date', help='End date in YYYY-MM-DD format. Used only with --start-date.')
     
     args = parser.parse_args()
     site_url = args.site_url
@@ -214,20 +214,56 @@ def main():
         end_date = today.strftime('%Y-%m-%d')
         period_label = "last-3-months"
 
-    print(f"Using date range: {start_date} to {end_date}")
+    # Define output paths
+    if site_url.startswith('sc-domain:'):
+        host_plain = site_url.replace('sc-domain:', '')
+    else:
+        host_plain = urlparse(site_url).netloc
+    
+    host_dir = host_plain.replace('www.', '')
+    output_dir = os.path.join('output', host_dir)
+    os.makedirs(output_dir, exist_ok=True)
+    host_for_filename = host_dir.replace('.', '-')
 
-    service = get_gsc_service()
-    if not service:
-        return
+    base_file_prefix = f"snapshot-{host_for_filename}-{period_label}-{start_date}-to-{end_date}"
+    
+    pages_csv_path = os.path.join(output_dir, f"{base_file_prefix}-pages.csv")
+    devices_csv_path = os.path.join(output_dir, f"{base_file_prefix}-devices.csv")
+    countries_csv_path = os.path.join(output_dir, f"{base_file_prefix}-countries.csv")
+    html_output_path = os.path.join(output_dir, f"{base_file_prefix}-report.html")
 
-    # Fetch data for different dimensions
-    df_pages = get_gsc_data(service, site_url, start_date, end_date, ['page'])
-    df_devices = get_gsc_data(service, site_url, start_date, end_date, ['device'])
-    df_countries = get_gsc_data(service, site_url, start_date, end_date, ['country'])
+    use_cache = args.use_cache and os.path.exists(pages_csv_path) and os.path.exists(devices_csv_path) and os.path.exists(countries_csv_path)
 
-    if df_pages.empty:
-        print("No page data found for the specified period. Exiting.")
-        return
+    if use_cache:
+        print("Found cached data for all dimensions. Using it to generate report.")
+        df_pages = pd.read_csv(pages_csv_path)
+        df_devices = pd.read_csv(devices_csv_path)
+        df_countries = pd.read_csv(countries_csv_path)
+    else:
+        print(f"Using date range: {start_date} to {end_date}")
+        service = get_gsc_service()
+        if not service:
+            return
+
+        # Fetch data for different dimensions
+        df_pages = get_gsc_data(service, site_url, start_date, end_date, ['page'])
+        df_devices = get_gsc_data(service, site_url, start_date, end_date, ['device'])
+        df_countries = get_gsc_data(service, site_url, start_date, end_date, ['country'])
+
+        if df_pages.empty:
+            print("No page data found for the specified period. Exiting.")
+            return
+            
+        # Save dataframes to CSV to be used as cache
+        try:
+            df_pages.to_csv(pages_csv_path, index=False, encoding='utf-8')
+            df_devices.to_csv(devices_csv_path, index=False, encoding='utf-8')
+            df_countries.to_csv(countries_csv_path, index=False, encoding='utf-8')
+            print(f"\nSuccessfully exported data to CSV files in {output_dir}")
+            print(f"Hint: To recreate this report from the saved data, use the --use-cache flag.")
+        except PermissionError:
+            print(f"\nError: Permission denied when trying to write to the output directory.")
+            return
 
     # --- Analysis for HTML Observations ---
     # Top pages by clicks
@@ -244,27 +280,7 @@ def main():
         (df_pages['ctr'] < low_ctr_threshold_ctr)
     ].sort_values(by='impressions', ascending=False).head(20)
 
-   # --- Output Generation ---
-    if site_url.startswith('sc-domain:'):
-        host_plain = site_url.replace('sc-domain:', '')
-    else:
-        host_plain = urlparse(site_url).netloc
-    
-    host_dir = host_plain.replace('www.', '')
-    output_dir = os.path.join('output', host_dir)
-    os.makedirs(output_dir, exist_ok=True)
-    host_for_filename = host_dir.replace('.', '-')
-
-    csv_file_name = f"snapshot-pages-{host_for_filename}-{period_label}-{start_date}-to-{end_date}.csv"
-    csv_output_path = os.path.join(output_dir, csv_file_name)
-
-    html_file_name = f"snapshot-report-{host_for_filename}-{period_label}-{start_date}-to-{end_date}.html"
-    html_output_path = os.path.join(output_dir, html_file_name)
     try:
-        # Save detailed page data to CSV
-        df_pages.to_csv(csv_output_path, index=False, encoding='utf-8')
-        print(f"\nSuccessfully exported page data to {csv_output_path}")
-
         # Generate and save HTML report
         html_output = create_snapshot_html_report(
             page_title=f"Performance Snapshot for {host_dir}",
@@ -281,11 +297,7 @@ def main():
     except PermissionError:
         print(f"\nError: Permission denied when trying to write to the output directory.")
         print(f"Please make sure you have write permissions for the directory: {output_dir}")
-        print(f"Also, check if the file is already open in another program: {csv_file_name} or {html_file_name}")
-    except PermissionError:
-        print(f"\nError: Permission denied when trying to write to the output directory.")
-        print(f"Please make sure you have write permissions for the directory: {output_dir}")
-        print(f"Also, check if the file is already open in another program: {csv_file_name} or {html_file_name}")
+        print(f"Also, check if the file is already open in another program: {html_output_path}")
 
 
 def create_snapshot_html_report(page_title, period_str, df_top_clicks, df_top_impressions, df_low_ctr, df_devices, df_countries):

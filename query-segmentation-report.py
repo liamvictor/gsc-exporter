@@ -160,9 +160,11 @@ def main():
     parser = argparse.ArgumentParser(description='Generate a report of top queries segmented by position.')
     parser.add_argument('site_url', help='The URL of the site to analyse. Use sc-domain: for a domain property.')
     parser.add_argument('--search-type', default='web', choices=['web', 'image', 'video', 'news', 'discover', 'googleNews'], help='The search type to query. Defaults to "web".')
+    parser.add_argument('--use-cache', action='store_true', help='Use a cached CSV file from a previous run if it exists.')
 
     date_group = parser.add_mutually_exclusive_group()
     date_group.add_argument('--start-date', help='Start date in YYYY-MM-DD format.')
+    date_group.add_argument('--end-date', help='End date in YYYY-MM-DD format. Used only with --start-date.')
     date_group.add_argument('--last-month', action='store_true', help='Use the last calendar month for the report. (Default)')
     
     args = parser.parse_args()
@@ -184,38 +186,6 @@ def main():
         end_date = last_day_of_previous_month.strftime('%Y-%m-%d')
         period_label = "last-month"
     
-    print(f"Using date range: {start_date} to {end_date}")
-
-    service = get_gsc_service()
-    if not service:
-        return
-
-    df_queries = get_gsc_data(service, site_url, start_date, end_date, ['query'], args.search_type)
-
-    if df_queries.empty:
-        print("No query data found for the specified period. Exiting.")
-        return
-
-    # Define position segments
-    segments = {
-        "Positions 1-3": (df_queries['position'] >= 1) & (df_queries['position'] <= 3),
-        "Positions 4-10": (df_queries['position'] >= 4) & (df_queries['position'] <= 10),
-        "Positions 11-20": (df_queries['position'] >= 11) & (df_queries['position'] <= 20),
-        "Positions 21+": df_queries['position'] >= 21
-    }
-
-    segmented_dfs = {}
-    all_segments_for_csv = []
-
-    for name, condition in segments.items():
-        segment_df = df_queries[condition].sort_values(by='clicks', ascending=False).head(50) # Changed to 50
-        segmented_dfs[name] = segment_df
-        
-        # For CSV output
-        csv_segment_df = segment_df.copy()
-        csv_segment_df['position_segment'] = name
-        all_segments_for_csv.append(csv_segment_df)
-
     # --- Output Generation ---
     if site_url.startswith('sc-domain:'):
         host_plain = site_url.replace('sc-domain:', '')
@@ -231,7 +201,45 @@ def main():
     csv_output_path = os.path.join(output_dir, f"{file_prefix}.csv")
     html_output_path = os.path.join(output_dir, f"{file_prefix}.html")
 
-    try:
+    segmented_dfs = {}
+
+    if args.use_cache and os.path.exists(csv_output_path):
+        print(f"Found cached data at {csv_output_path}. Using it to generate report.")
+        csv_df = pd.read_csv(csv_output_path)
+        for segment_name in csv_df['position_segment'].unique():
+            segmented_dfs[segment_name] = csv_df[csv_df['position_segment'] == segment_name].drop(columns=['position_segment'])
+    else:
+        print(f"Using date range: {start_date} to {end_date}")
+
+        service = get_gsc_service()
+        if not service:
+            return
+
+        df_queries = get_gsc_data(service, site_url, start_date, end_date, ['query'], args.search_type)
+
+        if df_queries.empty:
+            print("No query data found for the specified period. Exiting.")
+            return
+
+        # Define position segments
+        segments = {
+            "Positions 1-3": (df_queries['position'] >= 1) & (df_queries['position'] <= 3),
+            "Positions 4-10": (df_queries['position'] >= 4) & (df_queries['position'] <= 10),
+            "Positions 11-20": (df_queries['position'] >= 11) & (df_queries['position'] <= 20),
+            "Positions 21+": df_queries['position'] >= 21
+        }
+
+        all_segments_for_csv = []
+
+        for name, condition in segments.items():
+            segment_df = df_queries[condition].sort_values(by='clicks', ascending=False).head(50) # Changed to 50
+            segmented_dfs[name] = segment_df
+            
+            # For CSV output
+            csv_segment_df = segment_df.copy()
+            csv_segment_df['position_segment'] = name
+            all_segments_for_csv.append(csv_segment_df)
+        
         # Save CSV
         if all_segments_for_csv:
             csv_df = pd.concat(all_segments_for_csv, ignore_index=True)
@@ -240,10 +248,11 @@ def main():
             csv_df = csv_df[cols]
             csv_df.to_csv(csv_output_path, index=False, encoding='utf-8')
             print(f"\nSuccessfully exported segmented query data to {csv_output_path}")
+            print(f"Hint: To recreate this report from the saved data, use the --use-cache flag.")
         else:
             print("\nNo data to export to CSV.")
 
-
+    try:
         # Generate and save HTML report
         html_output = create_html_report(
             segments=segmented_dfs,
