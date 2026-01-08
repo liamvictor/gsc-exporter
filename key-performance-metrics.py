@@ -132,15 +132,94 @@ def create_multi_site_html_report(df, sorted_sites):
 <footer><p><a href="https://github.com/liamdelahunty/gsc-exporter" target="_blank">gsc-exporter</a></p></footer></body></html>"""
 
 def create_single_site_html_report(df, report_title):
-    """Generates a simplified HTML report for a single site."""
-    df_no_site = df.drop(columns=['site_url'])
-    report_body = df_no_site.to_html(classes="table table-striped table-hover", index=False, border=0)
+    """Generates a simplified HTML report for a single site, including a chart."""
+    # Prepare data for the table by formatting numbers
+    df_table = df.drop(columns=['site_url']).copy()
+    df_table['clicks'] = df_table['clicks'].apply(lambda x: f"{x:,.0f}")
+    df_table['impressions'] = df_table['impressions'].apply(lambda x: f"{x:,.0f}")
+    df_table['ctr'] = df_table['ctr'].apply(lambda x: f"{x:.2%}")
+    df_table['position'] = df_table['position'].apply(lambda x: f"{x:.2f}")
+    report_body = df_table.to_html(classes="table table-striped table-hover", index=False, border=0)
+
+    # Prepare data for the chart (use the original unformatted dataframe)
+    chart_data = df.sort_values(by='month').to_json(orient='records')
+
     return f"""
 <!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>GSC Performance Report for {report_title}</title><link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-<style>body{{padding:2rem;}}h1{{border-bottom:2px solid #dee2e6;padding-bottom:.5rem;margin-top:2rem;}}.table thead th {{background-color: #434343;color: #ffffff;text-align: left;}}footer{{margin-top:3rem;text-align:center;color:#6c757d;}}</style></head>
-<body><div class="container-fluid"><h1>GSC Performance Report for {report_title}</h1><div class="table-responsive">{report_body}</div></div>
-<footer><p><a href="https://github.com/liamdelahunty/gsc-exporter" target="_blank">gsc-exporter</a></p></footer></body></html>"""
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>body{{padding:2rem;}}h1,h2{{border-bottom:2px solid #dee2e6;padding-bottom:.5rem;margin-top:2rem;}}.table thead th {{background-color: #434343;color: #ffffff;text-align: left;}}footer{{margin-top:3rem;text-align:center;color:#6c757d;}}</style></head>
+<body><div class="container-fluid"><h1>GSC Performance Report for {report_title}</h1>
+<div class="card my-4">
+  <div class="card-header"><h3>Clicks vs. Impressions</h3></div>
+  <div class="card-body"><canvas id="performanceChart"></canvas></div>
+</div>
+<h2>Data Table</h2>
+<div class="table-responsive">{report_body}</div></div>
+<footer><p><a href="https://github.com/liamdelahunty/gsc-exporter" target="_blank">gsc-exporter</a></p></footer>
+<script>
+    const data = {chart_data};
+    const labels = data.map(row => row.month);
+
+    new Chart(document.getElementById('performanceChart'), {{
+        type: 'line',
+        data: {{
+            labels: labels,
+            datasets: [
+                {{
+                    label: 'Clicks',
+                    data: data.map(row => row.clicks),
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                    yAxisID: 'yClicks',
+                    fill: false,
+                    tension: 0.1
+                }},
+                {{
+                    label: 'Impressions',
+                    data: data.map(row => row.impressions),
+                    borderColor: 'rgba(255, 99, 132, 1)',
+                    backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                    yAxisID: 'yImpressions',
+                    fill: false,
+                    tension: 0.1
+                }}
+            ]
+        }},
+        options: {{
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {{
+                mode: 'index',
+                intersect: false,
+            }},
+            scales: {{
+                yClicks: {{
+                    type: 'linear',
+                    display: true,
+                    position: 'left',
+                    title: {{
+                        display: true,
+                        text: 'Clicks'
+                    }}
+                }},
+                yImpressions: {{
+                    type: 'linear',
+                    display: true,
+                    position: 'right',
+                    title: {{
+                        display: true,
+                        text: 'Impressions'
+                    }},
+                    grid: {{
+                        drawOnChartArea: false, // only draw grid for the first Y axis
+                    }}
+                }}
+            }}
+        }}
+    }});
+</script>
+</body></html>"""
 
 def generate_site_sections(df, sorted_sites):
     """Generates HTML sections for each site."""
@@ -184,44 +263,10 @@ def main():
     """Main function to run the analysis."""
     parser = argparse.ArgumentParser(description='Run a monthly performance analysis for a GSC property.')
     parser.add_argument('site_url', nargs='?', default=None, help='The URL of the site to analyse. If not provided, runs for all sites.')
+    parser.add_argument('--use-cache', action='store_true', help='Use a cached CSV file from a previous run if it exists.')
     args = parser.parse_args()
 
-    service = get_gsc_service()
-    if not service:
-        return
-
-    if args.site_url:
-        sites = [args.site_url]
-    else:
-        sites = get_all_sites(service)
-        if not sites:
-            print("No sites found in your account.")
-            return
-        sites.sort(key=get_sort_key)
-
-    all_data = []
-    today = date.today()
-
-    for site_url in sites:
-        print(f"\nFetching data for site: {site_url}")
-        for i in range(1, 17):
-            end_of_month = today.replace(day=1) - relativedelta(months=i - 1) - timedelta(days=1)
-            start_of_month = end_of_month.replace(day=1)
-            start_date = start_of_month.strftime('%Y-%m-%d')
-            end_date = end_of_month.strftime('%Y-%m-%d')
-
-            data = get_monthly_performance_data(service, site_url, start_date, end_date)
-            if data == "PERMISSION_DENIED":
-                break
-            elif data:
-                all_data.append({'site_url': site_url, 'month': start_of_month.strftime('%Y-%m'), **data})
-    
-    if not all_data:
-        print("No performance data found.")
-        return
-
-    df = pd.DataFrame(all_data)
-    most_recent_month = (today.replace(day=1) - timedelta(days=1)).strftime('%Y-%m')
+    most_recent_month = (date.today().replace(day=1) - timedelta(days=1)).strftime('%Y-%m')
 
     if args.site_url:
         site = args.site_url
@@ -240,20 +285,75 @@ def main():
     os.makedirs(output_dir, exist_ok=True)
     csv_output_path = os.path.join(output_dir, f'{file_prefix}.csv')
     html_output_path = os.path.join(output_dir, f'{file_prefix}.html')
-    
-    try:
-        df.to_csv(csv_output_path, index=False)
-        print(f"\nSuccessfully exported CSV to {csv_output_path}")
 
-        html_df = df.copy()
-        html_df['clicks'] = html_df['clicks'].apply(lambda x: f"{x:,.0f}")
-        html_df['impressions'] = html_df['impressions'].apply(lambda x: f"{x:,.0f}")
-        html_df['ctr'] = html_df['ctr'].apply(lambda x: f"{x:.2%}")
-        html_df['position'] = html_df['position'].apply(lambda x: f"{x:.2f}")
+    df = None
+    sites = []
+
+    if args.use_cache and os.path.exists(csv_output_path):
+        print(f"Found cached data at {csv_output_path}. Using it to generate report.")
+        df = pd.read_csv(csv_output_path)
+        # If we load from cache, we need to reconstruct the 'sites' list for the multi-site report
+        if 'site_url' in df.columns:
+            sites = sorted(df['site_url'].unique(), key=get_sort_key)
+    
+    if df is None:
+        service = get_gsc_service()
+        if not service:
+            return
 
         if args.site_url:
-            html_output = create_single_site_html_report(html_df, args.site_url)
+            sites = [args.site_url]
         else:
+            sites = get_all_sites(service)
+            if not sites:
+                print("No sites found in your account.")
+                return
+            sites.sort(key=get_sort_key)
+
+        all_data = []
+        today = date.today()
+
+        for site_url in sites:
+            print(f"\nFetching data for site: {site_url}")
+            for i in range(1, 17):
+                end_of_month = today.replace(day=1) - relativedelta(months=i - 1) - timedelta(days=1)
+                start_of_month = end_of_month.replace(day=1)
+                start_date = start_of_month.strftime('%Y-%m-%d')
+                end_date = end_of_month.strftime('%Y-%m-%d')
+
+                data = get_monthly_performance_data(service, site_url, start_date, end_date)
+                if data == "PERMISSION_DENIED":
+                    break
+                elif data:
+                    all_data.append({'site_url': site_url, 'month': start_of_month.strftime('%Y-%m'), **data})
+        
+        if not all_data:
+            print("No performance data found.")
+            return
+
+        df = pd.DataFrame(all_data)
+        
+        try:
+            df.to_csv(csv_output_path, index=False)
+            print(f"\nSuccessfully exported CSV to {csv_output_path}")
+            print(f"Hint: To recreate this report from the saved data, use the --use-cache flag.")
+        except PermissionError:
+            print(f"\nError: Permission denied when writing to the output directory.")
+            return
+
+    # Proceed with report generation using the dataframe 'df'
+    try:
+        if args.site_url:
+            # Filter the dataframe for the single site if it was loaded from an account-wide cache
+            df_single = df[df['site_url'] == args.site_url]
+            html_output = create_single_site_html_report(df_single, args.site_url)
+        else:
+            # For multi-site report, format the dataframe before passing
+            html_df = df.copy()
+            html_df['clicks'] = html_df['clicks'].apply(lambda x: f"{x:,.0f}")
+            html_df['impressions'] = html_df['impressions'].apply(lambda x: f"{x:,.0f}")
+            html_df['ctr'] = html_df['ctr'].apply(lambda x: f"{x:.2%}")
+            html_df['position'] = html_df['position'].apply(lambda x: f"{x:.2f}")
             html_output = create_multi_site_html_report(html_df, sites)
         
         with open(html_output_path, 'w', encoding='utf-8') as f:
