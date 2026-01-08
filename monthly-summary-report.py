@@ -338,6 +338,7 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
     parser.add_argument('site_url', nargs='?', default=None, help='Optional: The URL of the site to analyse. If not provided, runs for all sites.')
+    parser.add_argument('--use-cache', action='store_true', help='Use a cached CSV file from a previous run if it exists.')
     
     date_group = parser.add_mutually_exclusive_group()
     date_group.add_argument('--all-months', action='store_true', help='Generate a separate report for each of the last 16 complete months.')
@@ -354,70 +355,55 @@ def main():
     if not service:
         return
 
+    # Determine the sites to process
+    sites_to_process = []
     if args.site_url:
-        sites = [args.site_url]
+        sites_to_process = [args.site_url]
     else:
-        sites = get_all_sites(service)
-        if not sites:
+        sites_to_process = get_all_sites(service)
+        if not sites_to_process:
             print("No sites found in your account.")
             return
-        sites.sort(key=get_sort_key)
+        sites_to_process.sort(key=get_sort_key)
     
     today = date.today()
-    date_ranges = []
+    date_ranges_to_process = []
 
     if args.all_months:
         for i in range(1, 17):
             end_of_month = today.replace(day=1) - relativedelta(months=i - 1) - timedelta(days=1)
             start_of_month = end_of_month.replace(day=1)
-            date_ranges.append((start_of_month.strftime('%Y-%m-%d'), end_of_month.strftime('%Y-%m-%d')))
+            date_ranges_to_process.append((start_of_month.strftime('%Y-%m-%d'), end_of_month.strftime('%Y-%m-%d')))
     elif args.start_date and args.end_date:
-        date_ranges.append((args.start_date, args.end_date))
+        date_ranges_to_process.append((args.start_date, args.end_date))
     elif args.last_7_days:
         start_date = (today - timedelta(days=7)).strftime('%Y-%m-%d')
         end_date = today.strftime('%Y-%m-%d')
-        date_ranges.append((start_date, end_date))
+        date_ranges_to_process.append((start_date, end_date))
     elif args.last_28_days:
         start_date = (today - timedelta(days=28)).strftime('%Y-%m-%d')
         end_date = today.strftime('%Y-%m-%d')
-        date_ranges.append((start_date, end_date))
+        date_ranges_to_process.append((start_date, end_date))
     else:  # Default to last complete month
         end_of_month = today.replace(day=1) - timedelta(days=1)
         start_of_month = end_of_month.replace(day=1)
-        date_ranges.append((start_of_month.strftime('%Y-%m-%d'), end_of_month.strftime('%Y-%m-%d')))
+        date_ranges_to_process.append((start_of_month.strftime('%Y-%m-%d'), end_of_month.strftime('%Y-%m-%d')))
 
-    for start_date, end_date in date_ranges:
+    for start_date, end_date in date_ranges_to_process:
         print(f"\n----- Processing date range: {start_date} to {end_date} -----")
-        all_data = []
-        for site_url in sites:
-            print(f"\nFetching data for site: {site_url}")
-            data = get_monthly_performance_data(service, site_url, start_date, end_date)
-            if data == "PERMISSION_DENIED":
-                continue # Skip to the next site
-            elif data:
-                all_data.append({'site_url': site_url, 'month': start_date[:7], **data})
         
-        if not all_data:
-            print(f"No performance data found for the period {start_date} to {end_date}.")
-            continue
-
-        df = pd.DataFrame(all_data)
-        column_order = ['site_url', 'month', 'clicks', 'impressions', 'ctr', 'position', 'queries', 'pages', 'queries_truncated', 'pages_truncated']
-        df = df[column_order]
-        
-        report_month_str = start_date[:7]
-        
+        # --- Define output paths for the current date range ---
         if args.site_url:
-            site = args.site_url
-            if site.startswith('sc-domain:'):
-                host_plain = site.replace('sc-domain:', '')
+            site_output_name = sites_to_process[0] # Use the single site's name for output dir
+            if site_output_name.startswith('sc-domain:'):
+                host_plain = site_output_name.replace('sc-domain:', '')
             else:
-                host_plain = urlparse(site).netloc
+                host_plain = urlparse(site_output_name).netloc
             
             host_dir = host_plain.replace('www.', '')
             output_dir = os.path.join('output', host_dir)
             file_prefix = f"monthly-summary-report-{host_dir.replace('.', '-')}-{start_date}-to-{end_date}"
-            report_title = f"Monthly Summary for {site}"
+            report_title = f"Monthly Summary for {site_output_name}"
         else:
             output_dir = os.path.join('output', 'account')
             file_prefix = f"monthly-summary-report-account-wide-{start_date}-to-{end_date}"
@@ -426,11 +412,45 @@ def main():
         os.makedirs(output_dir, exist_ok=True)
         csv_output_path = os.path.join(output_dir, f'{file_prefix}.csv')
         html_output_path = os.path.join(output_dir, f'{file_prefix}.html')
-        
-        try:
-            df.to_csv(csv_output_path, index=False)
-            print(f"\nSuccessfully exported CSV to {csv_output_path}")
 
+        df = None
+
+        if args.use_cache and os.path.exists(csv_output_path):
+            print(f"Found cached data at {csv_output_path}. Using it to generate report.")
+            df = pd.read_csv(csv_output_path)
+            # Ensure 'queries_truncated' and 'pages_truncated' are boolean if loading from cache
+            if 'queries_truncated' in df.columns:
+                df['queries_truncated'] = df['queries_truncated'].astype(bool)
+            if 'pages_truncated' in df.columns:
+                df['pages_truncated'] = df['pages_truncated'].astype(bool)
+        else:
+            all_data = []
+            for site_url in sites_to_process:
+                print(f"\nFetching data for site: {site_url}")
+                data = get_monthly_performance_data(service, site_url, start_date, end_date)
+                if data == "PERMISSION_DENIED":
+                    continue # Skip to the next site
+                elif data:
+                    all_data.append({'site_url': site_url, 'month': start_date[:7], **data})
+            
+            if not all_data:
+                print(f"No performance data found for the period {start_date} to {end_date}.")
+                continue
+
+            df = pd.DataFrame(all_data)
+            column_order = ['site_url', 'month', 'clicks', 'impressions', 'ctr', 'position', 'queries', 'pages', 'queries_truncated', 'pages_truncated']
+            df = df[column_order]
+
+            try:
+                df.to_csv(csv_output_path, index=False)
+                print(f"\nSuccessfully exported CSV to {csv_output_path}")
+                print(f"Hint: To recreate this report from the saved data, use the --use-cache flag.")
+            except PermissionError:
+                print(f"\nError: Permission denied when writing to the output directory.")
+                continue
+
+        # Generate HTML report
+        try:
             report_date_str = f"{start_date} to {end_date}"
             html_output = create_summary_report(df, report_title, report_date_str)
             

@@ -131,6 +131,7 @@ def main():
     """Main function to run the page exporter and generate CSV and HTML."""
     parser = argparse.ArgumentParser(description='Export Google Search Console pages to CSV and HTML.')
     parser.add_argument('site_url', help='The URL of the site to export pages for.\nUse sc-domain: for the property.')
+    parser.add_argument('--use-cache', action='store_true', help='Use a cached CSV file from a previous run if it exists.')
     
     # Create a mutually exclusive group for date range options
     date_group = parser.add_mutually_exclusive_group()
@@ -149,8 +150,6 @@ def main():
     
     args = parser.parse_args()
     site_url = args.site_url
-    start_date = args.start_date
-    end_date = args.end_date
     
     today = date.today()
 
@@ -195,39 +194,64 @@ def main():
     elif args.last_16_months:
         start_date = (today - relativedelta(months=16)).strftime('%Y-%m-%d')
         end_date = today.strftime('%Y-%m-%d')
-
-    service = get_gsc_service()
-    if not service:
-        return
-
-    pages = get_all_pages(service, site_url, start_date, end_date)
     
+    # Define output paths
+    if site_url.startswith('sc-domain:'):
+        host_plain = site_url.replace('sc-domain:', '')
+    else:
+        host_plain = urlparse(site_url).netloc
+    
+    host_dir = host_plain.replace('www.', '')
+    output_dir = os.path.join('output', host_dir)
+    os.makedirs(output_dir, exist_ok=True)
+    host_for_filename = host_dir.replace('.', '-')
+    
+    csv_file_name = f"gsc-pages-{host_for_filename}-{start_date}-to-{end_date}.csv"
+    csv_output_path = os.path.join(output_dir, csv_file_name)
+    
+    html_file_name = f"{host_for_filename}-links-{start_date}-to-{end_date}.html"
+    html_output_path = os.path.join(output_dir, html_file_name)
+
+    pages = []
+    if args.use_cache and os.path.exists(csv_output_path):
+        print(f"Found cached data at {csv_output_path}. Using it to generate report.")
+        try:
+            df = pd.read_csv(csv_output_path)
+            if 'Page' in df.columns:
+                pages = df['Page'].tolist()
+            else:
+                print(f"Warning: Cached CSV at {csv_output_path} does not contain 'Page' column. Re-fetching data.")
+        except Exception as e:
+            print(f"Error reading cached CSV: {e}. Re-fetching data.")
+        
+    if not pages: # If cache not used, or cache read failed, fetch fresh data
+        service = get_gsc_service()
+        if not service:
+            return
+
+        pages = get_all_pages(service, site_url, start_date, end_date)
+        
+        if pages:
+            try:
+                df = pd.DataFrame(pages, columns=['Page'])
+                df.to_csv(csv_output_path, index=False)
+                print(f"Successfully exported CSV to {csv_output_path}")
+                print(f"Hint: To recreate this report from the saved data, use the --use-cache flag.")
+            except PermissionError:
+                print(f"\nError: Permission denied when trying to write to the output directory.")
+                print(f"Please make sure you have write permissions for the directory: {output_dir}")
+                print(f"Also, check if the file is already open in another program: {csv_file_name}")
+                return
+        else:
+            print("No pages found for the given site and date range.")
+            return
+
     if pages:
         sorted_pages = sorted(pages)
         num_links = len(sorted_pages)
         print(f"\nTotal unique pages found: {num_links}")
 
-        if site_url.startswith('sc-domain:'):
-            host_plain = site_url.replace('sc-domain:', '')
-        else:
-            host_plain = urlparse(site_url).netloc
-        
-        host_dir = host_plain.replace('www.', '')
-        output_dir = os.path.join('output', host_dir)
-        os.makedirs(output_dir, exist_ok=True)
-        host_for_filename = host_dir.replace('.', '-')
-        
-        csv_file_name = f"gsc-pages-{host_for_filename}-{start_date}-to-{end_date}.csv"
-        csv_output_path = os.path.join(output_dir, csv_file_name)
-        
-        html_file_name = f"{host_for_filename}-links-{start_date}-to-{end_date}.html"
-        html_output_path = os.path.join(output_dir, html_file_name)
         try:
-            df = pd.DataFrame(sorted_pages, columns=['Page'])
-            df.to_csv(csv_output_path, index=False)
-            print(f"Successfully exported CSV to {csv_output_path}")
-
-            
             html_output = create_html_page(sorted_pages, f"Links for {host_dir}", NUM_COLUMNS, start_date, end_date, num_links)
             with open(html_output_path, 'w', encoding='utf-8') as f:
                 f.write(html_output)
@@ -235,7 +259,7 @@ def main():
         except PermissionError:
             print(f"\nError: Permission denied when trying to write to the output directory.")
             print(f"Please make sure you have write permissions for the directory: {output_dir}")
-            print(f"Also, check if the file is already open in another program: {csv_file_name} or {html_file_name}")
+            print(f"Also, check if the file is already open in another program: {html_file_name}")
     else:
         print("No pages found for the given site and date range.")
 

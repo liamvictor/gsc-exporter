@@ -205,47 +205,10 @@ def main():
     """Main function to run the analysis."""
     parser = argparse.ArgumentParser(description='Run a monthly queries/pages analysis for a GSC property.')
     parser.add_argument('site_url', nargs='?', default=None, help='The URL of the site to analyse. If not provided, runs for all sites.')
+    parser.add_argument('--use-cache', action='store_true', help='Use a cached CSV file from a previous run if it exists.')
     args = parser.parse_args()
 
-    service = get_gsc_service()
-    if not service:
-        return
-
-    if args.site_url:
-        sites = [args.site_url]
-    else:
-        sites = get_all_sites(service)
-        if not sites:
-            print("No sites found in your account.")
-            return
-        sites.sort(key=get_sort_key)
-
-    all_data = []
     today = date.today()
-
-    for site_url in sites:
-        print(f"\nFetching data for site: {site_url}")
-        for i in range(1, 17):
-            end_of_month = today.replace(day=1) - relativedelta(months=i - 1) - timedelta(days=1)
-            start_of_month = end_of_month.replace(day=1)
-            start_date = start_of_month.strftime('%Y-%m-%d')
-            end_date = end_of_month.strftime('%Y-%m-%d')
-            
-            print(f"  - Fetching data for {start_of_month.strftime('%Y-%m')}...")
-            data = get_monthly_performance_data(service, site_url, start_date, end_date)
-            if data == "PERMISSION_DENIED":
-                break
-            elif data:
-                all_data.append({'site_url': site_url, 'month': start_of_month.strftime('%Y-%m'), **data})
-    
-    if not all_data:
-        print("No performance data found.")
-        return
-
-    df = pd.DataFrame(all_data)
-    column_order = ['site_url', 'month', 'clicks', 'impressions', 'ctr', 'position', 'queries', 'pages']
-    df = df[column_order]
-    
     most_recent_month = (today.replace(day=1) - timedelta(days=1)).strftime('%Y-%m')
 
     if args.site_url:
@@ -266,10 +229,64 @@ def main():
     csv_output_path = os.path.join(output_dir, f'{file_prefix}.csv')
     html_output_path = os.path.join(output_dir, f'{file_prefix}.html')
     
-    try:
-        df.to_csv(csv_output_path, index=False)
-        print(f"\nSuccessfully exported CSV to {csv_output_path}")
+    df = None
+    sites = []
 
+    if args.use_cache and os.path.exists(csv_output_path):
+        print(f"Found cached data at {csv_output_path}. Using it to generate report.")
+        df = pd.read_csv(csv_output_path)
+        if 'site_url' in df.columns:
+            sites = sorted(df['site_url'].unique(), key=get_sort_key)
+    
+    if df is None:
+        service = get_gsc_service()
+        if not service:
+            return
+
+        if args.site_url:
+            sites = [args.site_url]
+        else:
+            sites = get_all_sites(service)
+            if not sites:
+                print("No sites found in your account.")
+                return
+            sites.sort(key=get_sort_key)
+
+        all_data = []
+        
+        for site_url in sites:
+            print(f"\nFetching data for site: {site_url}")
+            for i in range(1, 17):
+                end_of_month = today.replace(day=1) - relativedelta(months=i - 1) - timedelta(days=1)
+                start_of_month = end_of_month.replace(day=1)
+                start_date = start_of_month.strftime('%Y-%m-%d')
+                end_date = end_of_month.strftime('%Y-%m-%d')
+                
+                print(f"  - Fetching data for {start_of_month.strftime('%Y-%m')}...")
+                data = get_monthly_performance_data(service, site_url, start_date, end_date)
+                if data == "PERMISSION_DENIED":
+                    break
+                elif data:
+                    all_data.append({'site_url': site_url, 'month': start_of_month.strftime('%Y-%m'), **data})
+        
+        if not all_data:
+            print("No performance data found.")
+            return
+
+        df = pd.DataFrame(all_data)
+        column_order = ['site_url', 'month', 'clicks', 'impressions', 'ctr', 'position', 'queries', 'pages']
+        df = df[column_order]
+
+        try:
+            df.to_csv(csv_output_path, index=False)
+            print(f"\nSuccessfully exported CSV to {csv_output_path}")
+            print(f"Hint: To recreate this report from the saved data, use the --use-cache flag.")
+        except PermissionError:
+            print(f"\nError: Permission denied when writing to the output directory.")
+            return
+
+    # Proceed with report generation
+    try:
         html_df = df.copy()
         html_df['clicks'] = html_df['clicks'].apply(lambda x: f"{x:,.0f}")
         html_df['impressions'] = html_df['impressions'].apply(lambda x: f"{x:,.0f}")
