@@ -34,6 +34,10 @@ Extends the `key-performance-metrics.py` script by also fetching the number of u
 
 Focuses on the distribution of query positions, breaking down clicks and impressions into predefined ranking buckets. It can also run for a single site or for all properties in a GSC account. The output is a CSV file and an HTML report.
 
+## query-segmentation-report.py
+
+Generates a report that segments top queries by their ranking position buckets (1-3, 4-10, 11-20, and 21+). The HTML report includes summary charts providing a visual overview of the distribution of clicks, impressions, CTR, and query counts across these segments, followed by tables showing the top queries for each bucket.
+
 ## generate_gsc_wrapped.py
 
 Creates a "Google Organic Wrapped"-style annual summary for a single site. It highlights key metrics like total clicks and impressions, top-performing pages and queries, and the busiest month in a visually engaging HTML report. Date ranges can be customised.

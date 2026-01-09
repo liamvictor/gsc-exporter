@@ -12,7 +12,7 @@ This repository contains a collection of Python scripts designed to connect to t
 | `performance-analysis.py` | Compares two time periods (e.g., month-over-month) to find performance changes, rising stars, and content decay. |
 | `queries-pages-analysis.py` | Extends `key-performance-metrics` by adding unique query and page counts to the 16-month view. |
 | `query-position-analysis.py` | Tracks the distribution of query ranking positions over 16 months, with charts to visualize the trends. |
-| `query-segmentation-report.py` | Groups top queries into position buckets (1-3, 4-10, etc.) to identify high-performance keywords at different ranking levels. |
+| `query-segmentation-report.py` | Groups top 50 queries into position buckets (1-3, 4-10, etc.) to identify high-performance keywords at different ranking levels. Includes summary charts for clicks, impressions, CTR, and query count distribution. |
 | `gsc-pages-queries.py` | Generates a detailed, interactive report to explore the relationship between specific queries and the pages they lead to. |
 | `page-level-report.py` | Generates a page-level report including clicks, impressions, CTR, position, and unique query counts for each URL. |
 | `gsc_pages_exporter.py` | Exports a simple, bulk list of all pages discovered within a given date range. |
@@ -357,7 +357,7 @@ python query-position-analysis.py
 
 ## query-segmentation-report.py
 
-Generates a report that segments top queries by their ranking position buckets (1-3, 4-10, 11-20, and 21+).
+Generates a report that segments top queries by their ranking position buckets (1-3, 4-10, 11-20, and 21+). The report now includes summary charts at the top, providing a visual overview of the distribution of clicks, impressions, CTR, and query counts across these segments.
 
 ### Usage
 ```bash
@@ -368,7 +368,7 @@ python query-segmentation-report.py <site_url> [date_range_option]
 *   **Date Range Options**: Options like `--last-month`, etc., are available. If omitted, it defaults to the last calendar month.
 
 ### Output
-Generates a CSV and an HTML file in `output/<hostname>/`. The report contains four tables, each showing the top 25 queries (by clicks) for one of the position segments.
+Generates a CSV and an HTML file in `output/<hostname>/`. The report contains four tables, each showing the top 50 queries (by clicks) for one of the position segments, preceded by the new summary charts.
 
 ---
 
