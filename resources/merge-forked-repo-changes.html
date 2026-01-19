@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Merging Forked Repository Changes</title>
+    <style>
+        body { font-family: sans-serif; line-height: 1.6; margin: 20px; background: #f4f4f4; color: #333; }
+        .container { max-width: 900px; margin: auto; background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        h1, h2 { color: #0056b3; }
+        pre { background: #eee; padding: 10px; border-radius: 5px; overflow-x: auto; }
+        code { font-family: monospace; }
+        strong { color: #0056b3; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Merging Forked Repository Changes</h1>
+        <p>This document outlines the process for incorporating changes from a forked (or copied) repository into your "parent" repository using a Pull Request (PR).</p>
+
+        <h2>Step 1: You Push Your Changes First</h2>
+        <p>Since your local repository is ahead of your <code>main</code> branch on GitHub, you should push your changes first. This ensures the other user can base their work on the absolute latest version of your code.</p>
+        <ol>
+            <li>From your local repository, run:
+                <pre><code>git push origin main</code></pre>
+            </li>
+        </ol>
+
+        <h2>Step 2: Instructions for the Other User</h2>
+        <p>The other user needs to update their branch with your latest changes and then open the Pull Request. Please provide them with the following instructions.</p>
+        <ol>
+            <li><strong>Add your repository as a remote.</strong> This is a one-time setup that creates a reference to your "parent" repository. They can name it <code>upstream</code>. They must replace <code>&lt;your_repo_url&gt;</code> with the actual URL of your GitHub repository.
+                <pre><code>git remote add upstream &lt;your_repo_url&gt;</code></pre>
+            </li>
+            <li><strong>Fetch the latest changes from your repository.</strong> This will download the latest commits from your <code>main</code> branch without merging them yet.
+                <pre><code>git fetch upstream</code></pre>
+            </li>
+            <li><strong>Rebase their branch.</strong> This is the most important step. It will take their local commits and re-apply them on top of the latest version of your <code>main</code> branch. This creates a clean, linear history and makes the final merge much simpler.
+                <pre><code>git rebase upstream/main</code></pre>
+                <p><em>Note: If they encounter any merge conflicts during the rebase, Git will pause and ask them to resolve the conflicts before continuing.</em></p>
+            </li>
+            <li><strong>Push the rebased branch to their fork.</strong> Because the history of their <code>main</code> branch was rewritten by the rebase, they will need to perform a "force push". Using <code>--force-with-lease</code> is a safer alternative to <code>--force</code>.
+                <pre><code>git push origin main --force-with-lease</code></pre>
+            </li>
+            <li><strong>Create the Pull Request.</strong> They should now go to your repository's page on GitHub. GitHub will automatically detect that they pushed a new branch and will show a prominent "Compare & pull request" button. They should click it, review the changes, and submit the PR, ensuring the target is your <code>main</code> branch.</li>
+        </ol>
+
+        <h2>Step 3: You Review and Merge the Pull Request</h2>
+        <p>Once the other user has created the Pull Request, you will get a notification.</p>
+        <ol>
+            <li>Go to the <strong>"Pull requests"</strong> tab in your GitHub repository.</li>
+            <li>Click on the new PR to review the proposed changes, read their comments, and see a diff of all the code they want to merge.</li>
+            <li>If everything looks good, click the <strong>"Merge pull request"</strong> button.</li>
+            <li>Finally, pull the newly merged changes down to your local machine so it's fully up-to-date.
+                <pre><code>git pull origin main</code></pre>
+            </li>
+        </ol>
+        <p>This workflow is the standard for collaboration on GitHub and ensures that you have full control over what gets added to your repository.</p>
+    </div>
+</body>
+</html>
