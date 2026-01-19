@@ -149,9 +149,41 @@ def prepare_chart_data(df_all_queries, segments_config):
         
     return chart_data
 
-def create_html_report(segments, report_title, period_str, chart_data_json):
+def create_html_report(segments, report_title, period_str, chart_data, chart_data_json):
     """Generates an HTML report with charts from the segmented DataFrames."""
     
+    # Build the summary table HTML
+    summary_table_html = """
+    <h2 class='mt-5'>Performance Summary by Segment</h2>
+    <div class="table-responsive">
+        <table class="table table-bordered table-striped">
+            <thead class="thead-dark">
+                <tr>
+                    <th>Position Segment</th>
+                    <th>Total Impressions</th>
+                    <th>Total Clicks</th>
+                    <th>Unique Queries</th>
+                    <th>Average CTR</th>
+                </tr>
+            </thead>
+            <tbody>
+    """
+    for i, segment_name in enumerate(chart_data['segment_names']):
+        impressions_f = f"{chart_data['impressions'][i]:,}"
+        clicks_f = f"{chart_data['clicks'][i]:,}"
+        query_count_f = f"{chart_data['query_count'][i]:,}"
+        avg_ctr_f = f"{chart_data['avg_ctr'][i]:.2f}%"
+        summary_table_html += f"""
+        <tr>
+            <td>{segment_name}</td>
+            <td>{impressions_f}</td>
+            <td>{clicks_f}</td>
+            <td>{query_count_f}</td>
+            <td>{avg_ctr_f}</td>
+        </tr>
+        """
+    summary_table_html += "</tbody></table></div>"
+
     report_body = ""
     for segment_name, df_segment in segments.items():
         report_body += f"<h2 class='mt-5'>{segment_name}</h2>"
@@ -194,6 +226,8 @@ footer{{margin-top:3rem;text-align:center;color:#6c757d;}}
     <div class="col-lg-4"><div class="card"><div class="card-header"><h3>Query Count by Segment</h3></div><div class="card-body"><canvas id="queryCountChart"></canvas></div></div></div>
     <div class="col-lg-4"><div class="card"><div class="card-header"><h3>Average CTR by Segment</h3></div><div class="card-body"><canvas id="ctrBarChart"></canvas></div></div></div>
 </div>
+
+{summary_table_html}
 
 <div class="table-responsive">{report_body}</div>
 </div>
@@ -393,6 +427,7 @@ def main():
             segments=segmented_dfs,
             report_title=f"Query Segmentation Report for {host_dir}",
             period_str=f"{start_date} to {end_date}",
+            chart_data=chart_data,
             chart_data_json=chart_data_json
         )
         with open(html_output_path, 'w', encoding='utf-8') as f:
