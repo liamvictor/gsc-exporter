@@ -252,7 +252,7 @@ def main():
         print(f"\nTotal unique pages found: {num_links}")
 
         try:
-            html_output = create_html_page(sorted_pages, f"Links for {host_dir}", NUM_COLUMNS, start_date, end_date, num_links)
+            html_output = create_html_page(sorted_pages, f"Google Organic Pages for {host_dir}", NUM_COLUMNS, start_date, end_date, num_links)
             with open(html_output_path, 'w', encoding='utf-8') as f:
                 f.write(html_output)
             print(f"Successfully created HTML page at {html_output_path}")
