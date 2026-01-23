@@ -152,9 +152,9 @@ def create_multi_site_html_report(df, sorted_sites):
     site_sections_html = generate_site_sections(df, sorted_sites)
     return f"""
 <!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Query Position Distribution Report</title><link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<title>Google Organic Query Position Distribution Report</title><link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 <style>body{{padding:2rem;}}.table-responsive{{max-height:800px;}}h1,h2{{border-bottom:2px solid #dee2e6;padding-bottom:.5rem;margin-top:2rem;}}footer{{margin-top:3rem;text-align:center;color:#6c757d;}}</style></head>
-<body><div class="container-fluid"><h1 id="top">Query Position Distribution Report</h1><h2>Index</h2>{index_html}{site_sections_html}</div>
+<body><div class="container-fluid"><h1 id="top">Google Organic Query Position Distribution Report</h1><h2>Index</h2>{index_html}{site_sections_html}</div>
 <footer><p><a href="https://github.com/liamdelahunty/gsc-exporter" target="_blank">gsc-exporter</a></p></footer></body></html>"""
 
 def create_single_site_html_report(df, report_title):
@@ -171,10 +171,10 @@ def create_single_site_html_report(df, report_title):
 
     return f"""
 <!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Query Position Report for {report_title}</title><link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<title>Google Organic Query Position Report for {report_title}</title><link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>body{{padding:2rem;}}h1,h2{{border-bottom:2px solid #dee2e6;padding-bottom:.5rem;margin-top:2rem;}}.table thead th {{background-color: #434343;color: #ffffff;text-align: left;}}footer{{margin-top:3rem;text-align:center;color:#6c757d;}}</style></head>
-<body><div class="container-fluid"><h1>Query Position Report for {report_title}</h1>
+<body><div class="container-fluid"><h1>Google Organic Query Position Report for {report_title}</h1>
 <div class="row my-4">
     <div class="col-lg-6"><div class="card"><div class="card-header"><h3>Clicks by Position</h3></div><div class="card-body"><canvas id="clicksChart"></canvas></div></div></div>
     <div class="col-lg-6"><div class="card"><div class="card-header"><h3>Impressions by Position</h3></div><div class="card-body"><canvas id="impressionsChart"></canvas></div></div></div>
