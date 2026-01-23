@@ -192,7 +192,7 @@ def create_html_report(data_df, site_url, start_date, end_date, report_limit, su
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pages & Queries Report for {site_url}</title>
+    <title>Google Organic Pages & Queries Report for {site_url}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <style>
@@ -207,7 +207,7 @@ def create_html_report(data_df, site_url, start_date, end_date, report_limit, su
 </head>
 <body>
     <div class="container-fluid">
-        <h1 class="mb-3">Pages & Queries Report</h1>
+        <h1 class="mb-3">Google Organic Pages & Queries Report</h1>
         <h2>{site_url}</h2>
         <p class="text-muted">{start_date} to {end_date}</p>
 
