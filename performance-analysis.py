@@ -460,7 +460,7 @@ def main():
     
     try:
         html_output = create_html_report(
-            page_title=f"Performance Analysis for {site_url}",
+            page_title=f"Google Organic Performance Analysis for {site_url}",
             current_period_str=f"{current_start_date} to {current_end_date}",
             previous_period_str=f"{previous_start_date} to {previous_end_date}",
             df_best=df_best,
