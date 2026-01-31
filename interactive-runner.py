@@ -167,4 +167,17 @@ def main():
         
     print("\n" + "-"*50)
     print(f"Running command: {' '.join(command)}")
-    print("-
+    print("-"*50 + "\n")
+    
+    try:
+        # Using subprocess.run to execute the command and stream output
+        process = subprocess.run(command)
+    except FileNotFoundError:
+        print(f"Error: The script '{selected_report['file']}' was not found.")
+    except subprocess.CalledProcessError as e:
+        print(f"An error occurred while running the report: {e}")
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
+
+if __name__ == '__main__':
+    main()
