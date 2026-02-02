@@ -190,7 +190,11 @@ def create_single_site_html_report(df, report_title, period_str):
     <div class="col-lg-6"><div class="card"><div class="card-header"><h3>Total Clicks</h3></div><div class="card-body"><canvas id="totalClicksChart"></canvas></div></div></div>
     <div class="col-lg-6"><div class="card"><div class="card-header"><h3>Total Impressions</h3></div><div class="card-body"><canvas id="totalImpressionsChart"></canvas></div></div></div>
 </div>
-<h2>Data Table</h2><div class="table-responsive">{report_body}</div></div>
+<h2>Data Table</h2>
+<p class="text-muted">
+    <strong>Note:</strong> Totals in this table are the sum of a query-level data export. Due to API filtering of anonymised long-tail queries, these totals may be slightly lower than the property-wide totals shown in the Key Performance Metrics report.
+</p>
+<div class="table-responsive">{report_body}</div></div>
 <footer><p><a href="https://github.com/liamdelahunty/gsc-exporter" target="_blank">gsc-exporter</a></p></footer>
 <script>
     const data = {chart_data};
@@ -295,6 +299,9 @@ def generate_site_sections(df, sorted_sites):
                 <div class="col-lg-6"><div class="card"><div class="card-header"><h3>Total Impressions</h3></div><div class="card-body"><canvas id="totalImpressionsChart-{i}"></canvas></div></div></div>
             </div>
             <h2>Data Table for {site}</h2>
+            <p class="text-muted">
+                <strong>Note:</strong> Totals in this table are the sum of a query-level data export. Due to API filtering of anonymised long-tail queries, these totals may be slightly lower than the property-wide totals shown in the Key Performance Metrics report.
+            </p>
             <div class="table-responsive">{table_html}</div>
             <p><a href="#top">Back to Top</a></p>
             <script>

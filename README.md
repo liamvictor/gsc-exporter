@@ -537,6 +537,21 @@ python run_all_reports_for_site.py https://www.example.com --last-month
 
 ---
 
+---
+
+## A Note on Data Accuracy
+
+When comparing reports, you may notice that the grand totals for metrics like Clicks and Impressions can vary slightly between different report types. For example, the total impressions in the `key-performance-metrics.py` report might be higher than the total impressions in the `query-position-analysis.py` report for the same time period.
+
+This is expected and is a result of how the Google Search Console API works.
+
+*   **Aggregate Totals vs. Dimension-Grouped Data**: Reports like `key-performance-metrics.py` fetch the total aggregate data for the property, which matches the overview totals shown in the GSC user interface.
+*   **Anonymised Queries**: When you request data grouped by a dimension (e.g., by `query` in `query-position-analysis.py` or `page` in `gsc-pages-queries.py`), the API may omit very rare, long-tail queries to protect user privacy.
+
+Because these anonymised queries are not included in the dimension-based data export, summing the impressions or clicks from that data will result in a total that is slightly lower than the true aggregate total.
+
+**Recommendation**: For the most accurate top-line totals, use the `key-performance-metrics.py` report. For detailed analysis of your most significant pages or queries, use the dimension-specific reports.
+
 ## Setup
 
 ### 1. Google Cloud Project & API Credentials
