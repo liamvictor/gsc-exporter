@@ -69,6 +69,47 @@ def get_gsc_service():
 
     return build('webmasters', 'v3', credentials=creds)
 
+def get_latest_available_gsc_date(service, site_url, max_retries=5):
+    """
+    Determines the latest date for which GSC data is available by querying
+    backwards from today.
+    """
+    current_date = date.today()
+    for i in range(max_retries):
+        check_date = current_date - timedelta(days=i)
+        check_date_str = check_date.strftime('%Y-%m-%d')
+        
+        print(f"Checking for GSC data availability on: {check_date_str}...")
+        try:
+            request = {
+                'startDate': check_date_str,
+                'endDate': check_date_str,
+                'dimensions': ['date'], # Only need to check for any data
+                'rowLimit': 1,
+                'startRow': 0
+            }
+            response = service.searchanalytics().query(siteUrl=site_url, body=request).execute()
+            
+            if 'rows' in response and response['rows']:
+                print(f"Latest available GSC data found for: {check_date_str}")
+                return check_date
+            else:
+                print(f"No data for {check_date_str}, checking previous day.")
+        except HttpError as e:
+            # GSC returns 400 if date range is too recent (no data yet)
+            if e.resp.status == 400:
+                print(f"No data for {check_date_str}, checking previous day (HTTP 400).")
+            else:
+                print(f"An HTTP error occurred while checking date {check_date_str}: {e}")
+                print("Continuing to check previous days.")
+        except Exception as e:
+            print(f"An unexpected error occurred while checking date {check_date_str}: {e}")
+            print("Continuing to check previous days.")
+            
+    print(f"Could not determine latest available GSC date within {max_retries} days. Using today's date as a fallback.")
+    return current_date # Fallback to today if no data found after retries
+
+
 def get_gsc_data(service, site_url, start_date, end_date, dimensions, search_type='web'):
     """Fetches performance data from GSC for a given date range and dimensions."""
     all_data = []
@@ -333,20 +374,25 @@ def main():
     args = parser.parse_args()
     site_url = args.site_url
 
-    if not args.start_date:
+    if not any([args.start_date, args.last_month]):
         args.last_month = True
 
-    today = date.today()
-    
+    # Authenticate and get service object
+    service = get_gsc_service()
+    if not service:
+        return
+
+    # Determine date range
     if args.start_date and args.end_date:
         start_date = args.start_date
         end_date = args.end_date
         period_label = "custom-period"
     elif args.last_month:
-        first_day_of_current_month = today.replace(day=1)
-        last_day_of_previous_month = first_day_of_current_month - timedelta(days=1)
-        start_date = last_day_of_previous_month.replace(day=1).strftime('%Y-%m-%d')
-        end_date = last_day_of_previous_month.strftime('%Y-%m-%d')
+        latest_available_date = get_latest_available_gsc_date(service, site_url)
+        start_date_dt = latest_available_date.replace(day=1)
+        end_date_dt = (start_date_dt + relativedelta(months=1)) - timedelta(days=1)
+        start_date = start_date_dt.strftime('%Y-%m-%d')
+        end_date = end_date_dt.strftime('%Y-%m-%d')
         period_label = "last-month"
     
     # --- Output Generation ---
@@ -379,10 +425,6 @@ def main():
         df_queries = pd.read_csv(csv_output_path, keep_default_na=False, na_values=[''])
     else:
         print(f"Using date range: {start_date} to {end_date}")
-
-        service = get_gsc_service()
-        if not service:
-            return
 
         df_queries = get_gsc_data(service, site_url, start_date, end_date, ['query'], args.search_type)
 
