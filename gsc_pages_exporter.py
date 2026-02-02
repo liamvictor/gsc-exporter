@@ -220,10 +220,10 @@ def main():
         start_date = (latest_available_date - timedelta(days=27)).strftime('%Y-%m-%d')
         end_date = latest_available_date.strftime('%Y-%m-%d')
     elif args.last_month:
-        first_day_of_current_month = latest_available_date.replace(day=1)
-        last_day_of_previous_month = first_day_of_current_month - timedelta(days=1)
-        start_date = last_day_of_previous_month.replace(day=1).strftime('%Y-%m-%d')
-        end_date = last_day_of_previous_month.strftime('%Y-%m-%d')
+        start_date_dt = latest_available_date.replace(day=1)
+        end_date_dt = (start_date_dt + relativedelta(months=1)) - timedelta(days=1)
+        start_date = start_date_dt.strftime('%Y-%m-%d')
+        end_date = end_date_dt.strftime('%Y-%m-%d')
     elif args.last_quarter:
         current_quarter = (latest_available_date.month - 1) // 3
         end_date_dt = datetime(latest_available_date.year, 3 * current_quarter + 1, 1).date() - timedelta(days=1)
