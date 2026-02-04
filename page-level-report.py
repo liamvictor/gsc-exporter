@@ -292,8 +292,8 @@ def main():
         end_date = latest_available_date.strftime('%Y-%m-%d')
         period_label = "last-28-days"
     elif args.last_month:
-        start_date_dt = latest_available_date.replace(day=1)
-        end_date_dt = (start_date_dt + relativedelta(months=1)) - timedelta(days=1)
+        end_date_dt = latest_available_date.replace(day=1) - timedelta(days=1)
+        start_date_dt = end_date_dt.replace(day=1)
         start_date = start_date_dt.strftime('%Y-%m-%d')
         end_date = end_date_dt.strftime('%Y-%m-%d')
         period_label = "last-month"
