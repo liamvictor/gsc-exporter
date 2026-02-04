@@ -131,7 +131,7 @@ def create_multi_site_html_report(df, sorted_sites):
 <body><div class="container-fluid"><h1 id="top">Account-Wide Google Organic Performance Report</h1><h2>Index</h2>{index_html}{site_sections_html}</div>
 <footer><p><a href="https://github.com/liamdelahunty/gsc-exporter" target="_blank">gsc-exporter</a></p></footer></body></html>"""
 
-def create_single_site_html_report(df, report_title):
+def create_single_site_html_report(df, report_title, full_period_str):
     """Generates a simplified HTML report for a single site, including a chart."""
     # Prepare data for the table by formatting numbers
     df_table = df.drop(columns=['site_url']).copy()
@@ -150,6 +150,7 @@ def create_single_site_html_report(df, report_title):
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>body{{padding:2rem;}}h1,h2{{border-bottom:2px solid #dee2e6;padding-bottom:.5rem;margin-top:2rem;}}.table thead th {{background-color: #434343;color: #ffffff;text-align: left;}}footer{{margin-top:3rem;text-align:center;color:#6c757d;}}</style></head>
 <body><div class="container-fluid"><h1>Google Organic Performance Report for {report_title}</h1>
+<p class="text-muted">{full_period_str}</p>
 <div class="card my-4">
   <div class="card-header"><h3>Clicks vs. Impressions</h3></div>
   <div class="card-body"><canvas id="performanceChart"></canvas></div>
@@ -346,7 +347,16 @@ def main():
         if args.site_url:
             # Filter the dataframe for the single site if it was loaded from an account-wide cache
             df_single = df[df['site_url'] == args.site_url]
-            html_output = create_single_site_html_report(df_single, args.site_url)
+            
+            # Determine the full period covered by the data
+            if not df_single.empty:
+                min_month = df_single['month'].min()
+                max_month = df_single['month'].max()
+                full_period_str = f"Monthly breakdown from {min_month} to {max_month}"
+            else:
+                full_period_str = "No data available for this period."
+
+            html_output = create_single_site_html_report(df_single, args.site_url, full_period_str)
         else:
             # For multi-site report, format the dataframe before passing
             html_df = df.copy()
