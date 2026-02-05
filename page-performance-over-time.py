@@ -159,8 +159,10 @@ def get_gsc_data(service, site_url, start_date, end_date, dimensions, filters=No
         
     return df
 
-def create_html_report(report_title, df_clicks, df_impressions):
+def create_html_report(site_url, start_date, end_date, df_clicks, df_impressions):
     """Generates an HTML report from the pivoted dataframes."""
+
+    report_title = "Page Performance Over Time Report"
 
     def format_df(df):
         """Formats a dataframe for HTML output."""
@@ -179,18 +181,42 @@ def create_html_report(report_title, df_clicks, df_impressions):
 <!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{report_title}</title><link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 <style>
-body {{ padding: 2rem; }}
-h1, h2 {{ border-bottom: 2px solid #dee2e6; padding-bottom: .5rem; margin-top: 2rem; }}
-footer {{ margin-top: 3rem; text-align: center; color: #6c757d; }}
+body {{ padding-top: 56px; }}
+h2 {{ border-bottom: 2px solid #dee2e6; padding-bottom: .5rem; margin-top: 2rem; }}
 .table-responsive {{ max-height: 600px; }}
 </style></head>
-<body><div class="container-fluid"><h1>{report_title}</h1>
-<h2>Clicks Over Time</h2>
-<div class="table-responsive">{clicks_table}</div>
-<h2>Impressions Over Time</h2>
-<div class="table-responsive">{impressions_table}</div>
-</div>
-<footer><p><a href="https://github.com/liamdelahunty/gsc-exporter" target="_blank">gsc-exporter</a></p></footer></body></html>
+<body>
+    <header class="navbar navbar-expand-lg navbar-light bg-light border-bottom mb-4 fixed-top">
+        <div class="container-fluid">
+            <div class="d-flex align-items-baseline">
+                <h1 class="h3 mb-0 me-4">{report_title}</h1>
+                <span class="text-muted me-4">{site_url}</span>
+                <span class="text-muted me-4">{start_date} to {end_date}</span>
+            </div>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="../../resources/index.html">Resources</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="https://github.com/liamdelahunty/gsc-exporter" target="_blank">GitHub</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </header>
+    <main class="container-fluid py-4 flex-grow-1">
+        <p>This report tracks the top 250 pages based on clicks from the initial month's data.</p>
+        <h2>Clicks Over Time</h2>
+        <div class="table-responsive">{clicks_table}</div>
+        <h2>Impressions Over Time</h2>
+        <div class="table-responsive">{impressions_table}</div>
+    </main>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body></html>
 """
 
 def main():
@@ -233,6 +259,8 @@ def main():
     # 3. Fetch data for the last 16 full months for these top pages
     all_monthly_data = []
     
+    PAGE_BATCH_SIZE = 50 # Define batch size for pages
+
     for i in range(16):
         # Calculate start and end of each of the past 16 full months
         month_to_fetch_end = (latest_available_date.replace(day=1) - relativedelta(months=i)) - timedelta(days=1)
@@ -241,20 +269,29 @@ def main():
         month_start_str = month_to_fetch_start.strftime('%Y-%m-%d')
         month_end_str = month_to_fetch_end.strftime('%Y-%m-%d')
         
-        # Construct a regex for filtering multiple pages
-        # Escape special regex characters in each URL and join with '|'
-        escaped_pages = [re.escape(page) for page in top_250_pages]
-        regex_expression = "^(" + "|".join(escaped_pages) + ")$"
+        print(f"Fetching data for month: {month_start_str} to {month_end_str}...")
         
-        page_filter = {
-            'dimension': 'page',
-            'operator': 'includingRegex',
-            'expression': regex_expression
-        }
+        monthly_data_for_batches = []
+        for j in range(0, len(top_250_pages), PAGE_BATCH_SIZE):
+            page_batch = top_250_pages[j:j + PAGE_BATCH_SIZE]
+            
+            # Construct a regex for filtering pages in the current batch
+            escaped_pages = [re.escape(page) for page in page_batch]
+            regex_expression = "^(" + "|".join(escaped_pages) + ")$"
+            
+            page_filter = {
+                'dimension': 'page',
+                'operator': 'includingRegex',
+                'expression': regex_expression
+            }
+            
+            df_batch = get_gsc_data(service, site_url, month_start_str, month_end_str, ['page'], filters=[page_filter])
+            
+            if df_batch is not None and not df_batch.empty:
+                monthly_data_for_batches.append(df_batch)
         
-        df_month = get_gsc_data(service, site_url, month_start_str, month_end_str, ['page'], filters=[page_filter])
-        
-        if not df_month.empty:
+        if monthly_data_for_batches:
+            df_month = pd.concat(monthly_data_for_batches, ignore_index=True)
             df_month['month'] = month_to_fetch_start.strftime('%Y-%m')
             all_monthly_data.append(df_month)
 
@@ -294,8 +331,14 @@ def main():
     print(f"Successfully saved data to {csv_output_path}")
 
     # 6. Generate and save HTML report
+    # The overall date range for the report is from the earliest month to the latest month fetched
+    overall_start_date = (latest_available_date.replace(day=1) - relativedelta(months=15)).strftime('%Y-%m-%d')
+    overall_end_date = (latest_available_date.replace(day=1) - timedelta(days=1)).strftime('%Y-%m-%d')
+    
     html_output = create_html_report(
-        report_title=f"Page Performance Over Time for {host_dir}",
+        site_url=site_url,
+        start_date=overall_start_date,
+        end_date=overall_end_date,
         df_clicks=df_pivot_clicks,
         df_impressions=df_pivot_impressions
     )
