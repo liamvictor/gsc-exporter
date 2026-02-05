@@ -145,12 +145,13 @@ def get_gsc_data(service, site_url, start_date, end_date, dimensions, filters=No
 
     df = pd.DataFrame(all_data)
     # Ensure keys are always returned as a list, even for a single dimension
-    if isinstance(df['keys'].iloc[0], list):
+    if 'keys' in df.columns and isinstance(df['keys'].iloc[0], list):
         df[dimensions] = pd.DataFrame(df['keys'].tolist(), index=df.index)
-    else:
+    elif 'keys' in df.columns:
         df[dimensions[0]] = df['keys']
-        
-    df = df.drop(columns=['keys'])
+    
+    if 'keys' in df.columns:
+        df = df.drop(columns=['keys'])
     
     for col in ['clicks', 'impressions', 'ctr', 'position']:
         if col in df.columns:
@@ -209,7 +210,6 @@ def find_covering_site(page_url, all_sites):
 
 def create_html_report(page_url, site_url, start_date, end_date, df_combined):
     """Generates an HTML report from the pivoted dataframes with combined table and page link."""
-
     report_title = f"Page Performance Over Time Report for {page_url}"
 
     # Prepare data for the chart (use the original unformatted dataframe for numerical values)
@@ -232,31 +232,62 @@ def create_html_report(page_url, site_url, start_date, end_date, df_combined):
     else:
         chart_data_json = "[]"
 
-    # Create a single combined DataFrame for the HTML table
-    # Select data for the specific page_url and unstack to get months as index and metrics as columns
-    df_table_data = df_combined.loc[page_url].unstack(level=0)
-    df_table_data = df_table_data[['clicks', 'impressions', 'ctr', 'position']] # Ensure order
-    df_table_data.index.name = 'Month'
-    df_table_data = df_table_data.reset_index()
+    # Create a single combined DataFrame for the main HTML table (Months as rows)
+    df_table_data_months_rows = df_combined.loc[page_url].unstack(level=0)
+    df_table_data_months_rows = df_table_data_months_rows[['clicks', 'impressions', 'ctr', 'position']] # Ensure order
+    df_table_data_months_rows.index.name = 'Month'
+    df_table_data_months_rows = df_table_data_months_rows.reset_index()
 
-    # Format numeric columns for display
-    df_table_data['clicks'] = df_table_data['clicks'].apply(lambda x: f"{int(x):,}")
-    df_table_data['impressions'] = df_table_data['impressions'].apply(lambda x: f"{int(x):,}")
-    df_table_data['ctr'] = df_table_data['ctr'].apply(lambda x: f"{x:.2%}")
-    df_table_data['position'] = df_table_data['position'].apply(lambda x: f"{x:.2f}")
+    # Format numeric columns for display in months-as-rows table
+    df_table_data_months_rows['clicks'] = df_table_data_months_rows['clicks'].apply(lambda x: f"{int(x):,}")
+    df_table_data_months_rows['impressions'] = df_table_data_months_rows['impressions'].apply(lambda x: f"{int(x):,}")
+    df_table_data_months_rows['ctr'] = df_table_data_months_rows['ctr'].apply(lambda x: f"{x:.2%}")
+    df_table_data_months_rows['position'] = df_table_data_months_rows['position'].apply(lambda x: f"{x:.2f}")
 
-    combined_table_html = df_table_data.to_html(classes="table table-striped table-hover", index=False, border=0)
+    combined_table_months_rows_html = df_table_data_months_rows.to_html(
+        classes="table table-striped table-hover",
+        index=False,
+        border=0,
+        justify="left"
+    )
+
+    # Create a secondary DataFrame for the reversed HTML table (Metrics as rows)
+    df_table_data_metrics_rows = df_combined.loc[page_url].unstack(level=0)
+    df_table_data_metrics_rows = df_table_data_metrics_rows[['clicks', 'impressions', 'ctr', 'position']]
+    df_table_data_metrics_rows = df_table_data_metrics_rows.T
     
-    return f"""
+    # Create a new DataFrame with formatted strings to avoid dtype conflicts
+    formatted_df = df_table_data_metrics_rows.astype(object)
+    for month in formatted_df.columns:
+        clicks_val = df_table_data_metrics_rows.loc['clicks', month]
+        impressions_val = df_table_data_metrics_rows.loc['impressions', month]
+        ctr_val = df_table_data_metrics_rows.loc['ctr', month]
+        position_val = df_table_data_metrics_rows.loc['position', month]
+            
+        formatted_df.loc['clicks', month] = f"{int(clicks_val):,}" if pd.notna(clicks_val) else "0"
+        formatted_df.loc['impressions', month] = f"{int(impressions_val):,}" if pd.notna(impressions_val) else "0"
+        formatted_df.loc['ctr', month] = f"{ctr_val:.2%}" if pd.notna(ctr_val) else "0.00%"
+        formatted_df.loc['position', month] = f"{position_val:.2f}" if pd.notna(position_val) else "0.00"
+
+    formatted_df.index.name = 'Metric'
+    formatted_df = formatted_df.reset_index()
+    
+    combined_table_metrics_rows_html = formatted_df.to_html(
+        classes="table table-striped table-hover",
+        index=False,
+        border=0,
+        justify="left"
+    )
+    
+    template = """
 <!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>{report_title}</title><link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<title>{0}</title><link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
 body {{ padding-top: 56px; }}
 h2 {{ border-bottom: 2px solid #dee2e6; padding-bottom: .5rem; margin-top: 2rem; }}
 .table-responsive {{ max-height: 600px; }}
-.table thead th {{ text-align: center; }} /* Center align all header cells */
-.table thead th:first-child {{ text-align: left; }} /* Left align the first header cell (Page) */
+.table thead th {{ text-align: left !important; }} /* Left align all header cells */
 .table tbody td:first-child {{ text-align: left; }} /* Left align the first data cell (Page URL) */
 
 .table-container {{
@@ -280,18 +311,22 @@ h2 {{ border-bottom: 2px solid #dee2e6; padding-bottom: .5rem; margin-top: 2rem;
 }}
 .chart-container {{
     position: relative;
-    height: 40vh;
-    width: 80vw;
+    height: 40vh; /* Keep height fixed */
+    width: 100%; /* Make width responsive to parent column */
     margin: auto;
+}}
+canvas {{
+    height: 100% !important;
+    width: 100% !important;
 }}
 </style></head>
 <body>
     <header class="navbar navbar-expand-lg navbar-light bg-light border-bottom mb-4 fixed-top">
         <div class="container-fluid">
             <div class="d-flex align-items-baseline">
-                <h1 class="h3 mb-0 me-4">{report_title}</h1>
-                <span class="text-muted me-4">Site: {site_url}</span>
-                <span class="text-muted me-4">{start_date} to {end_date}</span>
+                <h1 class="h3 mb-0 me-4">{0}</h1>
+                <span class="text-muted me-4">Site: {1}</span>
+                <span class="text-muted me-4">{2} to {3}</span>
             </div>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
@@ -309,7 +344,7 @@ h2 {{ border-bottom: 2px solid #dee2e6; padding-bottom: .5rem; margin-top: 2rem;
         </div>
     </header>
     <main class="container-fluid py-4 flex-grow-1">
-        <p class="mb-3"><a href="{page_url}" target="_blank" class="h5">{page_url}</a></p>
+        <p class="mb-3"><a href="{4}" target="_blank" class="h5">{4}</a></p>
         <div class="row my-4">
             <div class="col-lg-12">
                 <div class="card">
@@ -322,30 +357,35 @@ h2 {{ border-bottom: 2px solid #dee2e6; padding-bottom: .5rem; margin-top: 2rem;
             <div class="col-lg-6">
                 <div class="card">
                     <div class="card-header"><h3>Average CTR</h3></div>
-                    <div class="card-body chart-container"><canvas id="ctrChart"></canvas></div>
+                    <div class="card-body chart-container"><canvas id="ctrChart" class="h-100"></canvas></div>
                 </div>
             </div>
             <div class="col-lg-6">
                 <div class="card">
                     <div class="card-header"><h3>Average Position</h3></div>
-                    <div class="card-body chart-container"><canvas id="positionChart"></canvas></div>
+                    <div class="card-body chart-container"><canvas id="positionChart" class="h-100"></canvas></div>
                 </div>
             </div>
         </div>
 
         <h2 class="mt-5">Performance Data</h2>
         <div class="table-responsive">
-            {combined_table_html}
+            {6}
+        </div>
+
+        <h2 class="mt-5">Performance Data</h2>
+        <div class="table-responsive">
+            {7}
         </div>
     </main>
     <footer class="footer mt-auto py-3 bg-light">
         <div class="container text-center">
-            <span class="text-muted">Report generated on {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}</span>
+            <span class="text-muted">Report generated on {8}</span>
         </div>
     </footer>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        const data = {chart_data_json};
+        const data = {5};
         const labels = data.map(row => row.month);
 
         // Clicks vs Impressions Chart
@@ -450,6 +490,7 @@ h2 {{ border-bottom: 2px solid #dee2e6; padding-bottom: .5rem; margin-top: 2rem;
     </script>
 </body></html>
 """
+    return template
 
 def main():
     """Main function to run the single page performance over time report."""
