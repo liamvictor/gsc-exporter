@@ -204,14 +204,16 @@ def create_html_report(site_url, start_date, end_date, df_combined):
             body_rows += '</tr>'
             
         return f"""
-<table class="table table-striped table-hover">
-    <thead>
-        <tr>{header_cells}</tr>
-    </thead>
-    <tbody>
-        {body_rows}
-    </tbody>
-</table>
+<div class="table-container">
+    <table class="table table-striped table-hover">
+        <thead>
+            <tr>{header_cells}</tr>
+        </thead>
+        <tbody>
+            {body_rows}
+        </tbody>
+    </table>
+</div>
 """
 
 
@@ -237,6 +239,26 @@ h2 {{ border-bottom: 2px solid #dee2e6; padding-bottom: .5rem; margin-top: 2rem;
 .table thead th {{ text-align: center; }} /* Center align all header cells */
 .table thead th:first-child {{ text-align: left; }} /* Left align the first header cell (Page) */
 .table tbody td:first-child {{ text-align: left; }} /* Left align the first data cell (Page URL) */
+
+.table-container {{
+    max-height: 400px; /* Adjust as needed */
+    overflow-y: auto;
+    position: relative;
+    border: 1px solid #dee2e6;
+    border-radius: .25rem;
+}}
+
+.table-container table {{
+    margin-bottom: 0;
+}}
+
+.table-container thead th {{
+    position: sticky;
+    top: 0;
+    background-color: #f8f9fa; /* Bootstrap's default table head background */
+    z-index: 10;
+    box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.1);
+}}
 </style></head>
 <body>
     <header class="navbar navbar-expand-lg navbar-light bg-light border-bottom mb-4 fixed-top">
@@ -263,10 +285,10 @@ h2 {{ border-bottom: 2px solid #dee2e6; padding-bottom: .5rem; margin-top: 2rem;
     </header>
     <main class="container-fluid py-4 flex-grow-1">
         <p>This report tracks the top 100 pages based on clicks from the initial month's data.</p>
-        <div class="table-responsive">{clicks_table_html}</div>
-        <div class="table-responsive mt-5">{impressions_table_html}</div>
-        <div class="table-responsive mt-5">{ctr_table_html}</div>
-        <div class="table-responsive mt-5">{position_table_html}</div>
+        <div class="mb-5">{clicks_table_html}</div>
+        <div class="mb-5">{impressions_table_html}</div>
+        <div class="mb-5">{ctr_table_html}</div>
+        <div class="mb-5">{position_table_html}</div>
     </main>
     <footer class="footer mt-auto py-3 bg-light">
         <div class="container text-center">
