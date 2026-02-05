@@ -350,6 +350,11 @@ def main():
     # Combine into a single dataframe for export
     df_combined = pd.concat([df_pivot_clicks, df_pivot_impressions], keys=['clicks', 'impressions'], axis=1)
 
+    # 6. Generate and save HTML report
+    # The overall date range for the report is from the earliest month to the latest month fetched
+    overall_start_date = (latest_available_date.replace(day=1) - relativedelta(months=15)).strftime('%Y-%m-%d')
+    overall_end_date = (latest_available_date.replace(day=1) - timedelta(days=1)).strftime('%Y-%m-%d')
+    
     # 5. Save the data to CSV
     if site_url.startswith('sc-domain:'):
         host_plain = site_url.replace('sc-domain:', '')
@@ -361,18 +366,9 @@ def main():
     os.makedirs(output_dir, exist_ok=True)
     host_for_filename = host_dir.replace('.', '-')
 
-    file_prefix = f"page-performance-over-time-{host_for_filename}"
+    file_prefix = f"page-performance-over-time-{host_for_filename}-{overall_start_date}-to-{overall_end_date}"
     csv_output_path = os.path.join(output_dir, f"{file_prefix}.csv")
     html_output_path = os.path.join(output_dir, f"{file_prefix}.html")
-    
-    df_combined.to_csv(csv_output_path)
-    print(f"Successfully saved data to {csv_output_path}")
-
-    # 6. Generate and save HTML report
-    # The overall date range for the report is from the earliest month to the latest month fetched
-    overall_start_date = (latest_available_date.replace(day=1) - relativedelta(months=15)).strftime('%Y-%m-%d')
-    overall_end_date = (latest_available_date.replace(day=1) - timedelta(days=1)).strftime('%Y-%m-%d')
-    
     html_output = create_html_report(
         site_url=site_url,
         start_date=overall_start_date,
