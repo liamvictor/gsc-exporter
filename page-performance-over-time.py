@@ -20,6 +20,7 @@ from datetime import datetime, date, timedelta
 from dateutil.relativedelta import relativedelta
 from urllib.parse import urlparse
 import argparse
+import re
 
 # --- Configuration ---
 SCOPES = ['https://www.googleapis.com/auth/webmasters.readonly']
@@ -240,10 +241,15 @@ def main():
         month_start_str = month_to_fetch_start.strftime('%Y-%m-%d')
         month_end_str = month_to_fetch_end.strftime('%Y-%m-%d')
         
+        # Construct a regex for filtering multiple pages
+        # Escape special regex characters in each URL and join with '|'
+        escaped_pages = [re.escape(page) for page in top_250_pages]
+        regex_expression = "^(" + "|".join(escaped_pages) + ")$"
+        
         page_filter = {
             'dimension': 'page',
-            'operator': 'in',
-            'expression': top_250_pages
+            'operator': 'includingRegex',
+            'expression': regex_expression
         }
         
         df_month = get_gsc_data(service, site_url, month_start_str, month_end_str, ['page'], filters=[page_filter])
