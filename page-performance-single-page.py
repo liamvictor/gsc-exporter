@@ -251,33 +251,41 @@ def create_html_report(page_url, site_url, start_date, end_date, df_combined):
         justify="left"
     )
 
-    # Create a secondary DataFrame for the reversed HTML table (Metrics as rows)
-    df_table_data_metrics_rows = df_combined.loc[page_url].unstack(level=0)
-    df_table_data_metrics_rows = df_table_data_metrics_rows[['clicks', 'impressions', 'ctr', 'position']]
-    df_table_data_metrics_rows = df_table_data_metrics_rows.T
+    # --- Manual HTML Table Construction for the second table ---
+    # Transpose to get metrics as rows, months as columns
+    df_for_manual_table = df_combined.loc[page_url].unstack(level=0)[['clicks', 'impressions', 'ctr', 'position']].T
     
-    # Create a new DataFrame with formatted strings to avoid dtype conflicts
-    formatted_df = df_table_data_metrics_rows.astype(object)
-    for month in formatted_df.columns:
-        clicks_val = df_table_data_metrics_rows.loc['clicks', month]
-        impressions_val = df_table_data_metrics_rows.loc['impressions', month]
-        ctr_val = df_table_data_metrics_rows.loc['ctr', month]
-        position_val = df_table_data_metrics_rows.loc['position', month]
-            
-        formatted_df.loc['clicks', month] = f"{int(clicks_val):,}" if pd.notna(clicks_val) else "0"
-        formatted_df.loc['impressions', month] = f"{int(impressions_val):,}" if pd.notna(impressions_val) else "0"
-        formatted_df.loc['ctr', month] = f"{ctr_val:.2%}" if pd.notna(ctr_val) else "0.00%"
-        formatted_df.loc['position', month] = f"{position_val:.2f}" if pd.notna(position_val) else "0.00"
-
-    formatted_df.index.name = 'Metric'
-    formatted_df = formatted_df.reset_index()
+    # Start building the HTML string
+    html_parts = ['<table class="table table-striped table-hover" border="0" style="text-align: left;">']
     
-    combined_table_metrics_rows_html = formatted_df.to_html(
-        classes="table table-striped table-hover",
-        index=False,
-        border=0,
-        justify="left"
-    )
+    # Build the header row
+    header_th = ['<th>Metric</th>'] + [f'<th>{col}</th>' for col in df_for_manual_table.columns]
+    html_parts.append('<thead><tr style="text-align: left;">' + ''.join(header_th) + '</tr></thead>')
+    
+    # Build the body rows
+    body_rows = []
+    for metric, row in df_for_manual_table.iterrows():
+        row_html = f'<tr><th>{metric}</th>' # The metric name (e.g., 'clicks') is a header cell
+        for month, val in row.items():
+            if pd.notna(val):
+                if metric == 'clicks' or metric == 'impressions':
+                    formatted_val = f"{int(val):,}"
+                elif metric == 'ctr':
+                    formatted_val = f"{val:.2%}"
+                elif metric == 'position':
+                    formatted_val = f"{val:.2f}"
+                else:
+                    formatted_val = val
+            else:
+                formatted_val = "0" if metric in ['clicks', 'impressions'] else "0.00"
+            row_html += f'<td>{formatted_val}</td>'
+        row_html += '</tr>'
+        body_rows.append(row_html)
+        
+    html_parts.append('<tbody>' + ''.join(body_rows) + '</tbody>')
+    html_parts.append('</table>')
+    
+    combined_table_metrics_rows_html = ''.join(html_parts)
     
     template = """
 <!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
