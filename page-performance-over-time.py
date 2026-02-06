@@ -315,6 +315,19 @@ def main():
     args = parser.parse_args()
     site_url = args.site_url
 
+    service = get_gsc_service()
+    if not service:
+        return
+
+    latest_available_date = get_latest_available_gsc_date(service, site_url)
+    
+    # Calculate the fixed 16-month period from the latest_available_date
+    overall_end_date_dt = (latest_available_date.replace(day=1) - timedelta(days=1))
+    overall_start_date_dt = (overall_end_date_dt.replace(day=1) - relativedelta(months=15))
+
+    overall_start_date = overall_start_date_dt.strftime('%Y-%m-%d')
+    overall_end_date = overall_end_date_dt.strftime('%Y-%m-%d')
+
     if site_url.startswith('sc-domain:'):
         host_plain = site_url.replace('sc-domain:', '')
     else:
@@ -325,39 +338,30 @@ def main():
     os.makedirs(output_dir, exist_ok=True)
     host_for_filename = host_dir.replace('.', '-')
 
-    # Define a consistent file prefix for cached data
-    cache_file_prefix = f"page-performance-over-time-{host_for_filename}"
-    csv_cache_path = os.path.join(output_dir, f"{cache_file_prefix}-cached.csv")
-
+    # Define the consolidated data file paths using the upfront calculated dates
+    data_file_prefix = f"page-performance-over-time-{host_for_filename}-{overall_end_date[:7]}" # Use YYYY-MM
+    data_csv_path = os.path.join(output_dir, f"{data_file_prefix}.csv")
+    data_html_path = os.path.join(output_dir, f"{data_file_prefix}.html")
+    
     df_combined = None
-    if args.use_cache and os.path.exists(csv_cache_path):
-        print(f"Found cached data at {csv_cache_path}. Using it to generate report.")
-        # Load the combined dataframe from cache
-        df_combined = pd.read_csv(csv_cache_path, header=[0,1], index_col=0) # Load with multi-index columns and index
-        # Reconstruct the separate dataframes from the combined one
-        df_pivot_clicks = df_combined['clicks']
-        df_pivot_impressions = df_combined['impressions']
-        df_pivot_ctr = df_combined['ctr']
-        df_pivot_position = df_combined['position']
+    data_loaded_from_cache = False
+    if args.use_cache and os.path.exists(data_csv_path): # Check data_csv_path
+        print(f"Found cached data at {data_csv_path}. Using it to generate report.")
+        try:
+            df_combined = pd.read_csv(data_csv_path, header=[0,1], index_col=0)
+            data_loaded_from_cache = True
+            # Reconstruct pivot tables (as needed by create_html_report, though not explicitly used outside in this file)
+            df_pivot_clicks = df_combined['clicks']
+            df_pivot_impressions = df_combined['impressions']
+            df_pivot_ctr = df_combined['ctr']
+            df_pivot_position = df_combined['position']
+        except Exception as e:
+            print(f"Error loading cached data from {data_csv_path}: {e}. Will attempt to fetch fresh data.")
+            df_combined = None # Force fresh fetch if cache load fails
 
-        # Determine the overall_start_date and overall_end_date from the loaded data for report generation
-        # Assuming the columns are dates in YYYY-MM format
-        if not df_pivot_clicks.empty:
-            sorted_months = sorted(df_pivot_clicks.columns)
-            overall_start_date = datetime.strptime(sorted_months[0], '%Y-%m').strftime('%Y-%m-%d')
-            # The end date will be the last day of the last month in the sorted columns
-            last_month_dt = datetime.strptime(sorted_months[-1], '%Y-%m')
-            overall_end_date = (last_month_dt + relativedelta(months=1) - timedelta(days=1)).strftime('%Y-%m-%d')
-        else:
-            overall_start_date = "N/A"
-            overall_end_date = "N/A"
-
-    if df_combined is None: # Only fetch if not loaded from cache
-        service = get_gsc_service()
-        if not service:
-            return
-
-        latest_available_date = get_latest_available_gsc_date(service, site_url)
+    if df_combined is None: # Only fetch if not loaded from cache or cache failed
+        # service is already initialized at the start of main()
+        # latest_available_date is already determined at the start of main()
         
         # 1. Determine the date range for the last full calendar month
         end_of_last_month = latest_available_date.replace(day=1) - timedelta(days=1)
@@ -446,45 +450,38 @@ def main():
         # Combine into a single dataframe for export and caching
         df_combined = pd.concat([df_pivot_clicks, df_pivot_impressions, df_pivot_ctr, df_pivot_position], keys=['clicks', 'impressions', 'ctr', 'position'], axis=1)
         
-        # Determine the overall date range for the report from the fetched data
-        if not df_pivot_clicks.empty:
-            sorted_months = sorted(df_pivot_clicks.columns)
-            overall_start_date = datetime.strptime(sorted_months[0], '%Y-%m').strftime('%Y-%m-%d')
-            last_month_dt = datetime.strptime(sorted_months[-1], '%Y-%m')
-            overall_end_date = (last_month_dt + relativedelta(months=1) - timedelta(days=1)).strftime('%Y-%m-%d')
-        else:
-            overall_start_date = "N/A"
-            overall_end_date = "N/A"
-            
-        # Save the combined dataframe to cache
+        # Save the freshly fetched and combined dataframe to data_csv_path
         try:
-            df_combined.to_csv(csv_cache_path) # Save with multi-index header
-            print(f"Successfully cached data to {csv_cache_path}")
+            df_combined.to_csv(data_csv_path, index=True) # Save to consolidated path
+            print(f"Successfully created CSV report at {data_csv_path}")
             print(f"Hint: To recreate this report from the saved data, use the --use-cache flag.")
         except PermissionError:
-            print(f"\nError: Permission denied when writing to the cache file.")
+            print(f"\nError: Permission denied when writing to the data file: {data_csv_path}")
             
     if df_combined is None:
         print("No data available to generate report (either no data fetched or cache empty).")
         return
 
-    # 5. Save the data to CSV (original output path, not the cache path)
-    csv_output_path = os.path.join(output_dir, f"{cache_file_prefix}-{overall_start_date}-to-{overall_end_date}.csv")
-    html_output_path = os.path.join(output_dir, f"{cache_file_prefix}-{overall_start_date}-to-{overall_end_date}.html")
+    # Ensure the overall_start_date and overall_end_date are correctly set for HTML generation
+    # if df_combined was empty and dates could not be derived, this ensures they are still passed
+    # This might be redundant if the initial upfront calculation is always accurate.
+    # However, keeping it for robustness in case data fetching itself yielded no results.
+    if overall_start_date == "N/A" and not df_combined.empty:
+        sorted_months = sorted(df_combined['clicks'].columns)
+        overall_start_date = datetime.strptime(sorted_months[0], '%Y-%m').strftime('%Y-%m-%d')
+        last_month_dt = datetime.strptime(sorted_months[-1], '%Y-%m')
+        overall_end_date = (last_month_dt + relativedelta(months=1) - timedelta(days=1)).strftime('%Y-%m-%d')
 
-    # Ensure the combined dataframe is used for both CSV and HTML generation
-    df_combined.to_csv(csv_output_path, index=True)
-    print(f"Successfully created CSV report at {csv_output_path}")
-
+    # Generate HTML report
     html_output = create_html_report(
         site_url=site_url,
         start_date=overall_start_date,
         end_date=overall_end_date,
         df_combined=df_combined
     )
-    with open(html_output_path, 'w', encoding='utf-8') as f:
+    with open(data_html_path, 'w', encoding='utf-8') as f:
         f.write(html_output)
-    print(f"Successfully created HTML report at {html_output_path}")
+    print(f"Successfully created HTML report at {data_html_path}")
 
 if __name__ == '__main__':
     main()
