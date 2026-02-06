@@ -507,7 +507,7 @@ canvas {{
         chart_data_json,
         combined_table_months_rows_html,
         combined_table_metrics_rows_html,
-        datetime.now().strftime('%Y-%m-%d')
+        datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     )
 
 def main():
