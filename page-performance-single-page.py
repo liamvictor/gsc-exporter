@@ -590,7 +590,7 @@ def main():
     overall_end_date = overall_end_date_dt.strftime('%Y-%m-%d')
 
     # Define the consolidated data file paths using the upfront calculated dates
-    data_file_prefix = f"page-{page_slug}-{overall_start_date}-to-{overall_end_date}"
+    data_file_prefix = f"page-{page_slug}-{overall_end_date[:7]}"
     data_csv_path = os.path.join(output_dir, f"{data_file_prefix}.csv")
     data_html_path = os.path.join(output_dir, f"{data_file_prefix}.html")
 
