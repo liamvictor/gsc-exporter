@@ -490,7 +490,17 @@ canvas {{
     </script>
 </body></html>
 """
-    return template
+    return template.format(
+        report_title,
+        site_url,
+        start_date,
+        end_date,
+        page_url,
+        chart_data_json,
+        combined_table_months_rows_html,
+        combined_table_metrics_rows_html,
+        datetime.now().strftime('%Y-%m-%d')
+    )
 
 def main():
     """Main function to run the single page performance over time report."""
