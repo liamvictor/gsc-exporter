@@ -160,9 +160,7 @@ def create_html_report(df, report_title, period_str, summary_data, limit=None, t
     """Generates an HTML report from the DataFrame."""
 
     df_html = df.copy()
-    print(f"--- Debugging df_html dtypes ---")
-    print(df_html.dtypes)
-    print(f"--- End df_html dtypes ---")
+
 
     # --- Robust Pre-format numeric columns to strings for HTML display ---
     # Ensure all columns are truly numeric before formatting
