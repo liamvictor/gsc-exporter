@@ -138,11 +138,41 @@ def create_multi_site_html_report(df, sorted_sites):
     site_sections_html = generate_site_sections(df, sorted_sites)
 
     return f"""
-<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Account-Wide Google Discover Performance Report</title><link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-<style>body{{padding:2rem;}}.table-responsive{{max-height:800px;}}h1,h2{{border-bottom:2px solid #dee2e6;padding-bottom:.5rem;margin-top:2rem;}}footer{{margin-top:3rem;text-align:center;color:#6c757d;}}</style></head>
-<body><div class="container-fluid"><h1 id="top">Account-Wide Google Discover Performance Report</h1><h2>Index</h2>{index_html}{site_sections_html}</div>
-<footer><p><a href="https://github.com/liamdelahunty/gsc-exporter" target="_blank">gsc-exporter</a></p></footer></body></html>"""
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Account-Wide Google Discover Performance Report</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {{ padding-top: 56px; }} /* Offset for fixed header */
+        h1 {{ border-bottom: 2px solid #dee2e6; padding-bottom: .5rem; }}
+        h2 {{ border-bottom: 2px solid #dee2e6; padding-bottom: .5rem; margin-top: 2rem; }}
+        .table-responsive {{ max-height: 800px; }}
+        footer {{ margin-top: 3rem; text-align: center; color: #6c757d; }}
+    </style>
+</head>
+<body>
+    <header class="navbar navbar-expand-lg navbar-light bg-light border-bottom mb-4 fixed-top">
+        <div class="container-fluid">
+            <h1 class="h3 mb-0">Account-Wide Google Discover Performance Report</h1>
+        </div>
+    </header>
+    <main class="container-fluid py-4 flex-grow-1">
+        <h2>Index</h2>
+        {index_html}
+        {site_sections_html}
+    </main>
+    <footer class="footer mt-auto py-3 bg-light">
+        <div class="container text-center">
+            <span class="text-muted">Report generated on {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}. <a href="https://github.com/liamdelahunty/gsc-exporter" target="_blank">gsc-exporter</a></span>
+        </div>
+    </footer>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
+"""
 
 def create_single_site_html_report(df, report_title, full_period_str):
     """Generates a simplified HTML report for a single site, including a chart."""
@@ -158,82 +188,107 @@ def create_single_site_html_report(df, report_title, full_period_str):
     chart_data = df.sort_values(by='month').to_json(orient='records')
 
     return f"""
-<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Google Discover Performance Report for {report_title}</title><link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<style>body{{padding:2rem;}}h1,h2{{border-bottom:2px solid #dee2e6;padding-bottom:.5rem;margin-top:2rem;}}.table thead th {{background-color: #434343;color: #ffffff;text-align: left;}}footer{{margin-top:3rem;text-align:center;color:#6c757d;}}</style></head>
-<body><div class="container-fluid"><h1>Google Discover Performance Report for {report_title}</h1>
-<p class="text-muted">{full_period_str}</p>
-<div class="card my-4">
-  <div class="card-header"><h3>Clicks vs. Impressions</h3></div>
-  <div class="card-body"><canvas id="performanceChart"></canvas></div>
-</div>
-<h2>Data Table</h2>
-<div class="table-responsive">{report_body}</div></div>
-<footer><p><a href="https://github.com/liamdelahunty/gsc-exporter" target="_blank">gsc-exporter</a></p></footer>
-<script>
-    const data = {chart_data};
-    const labels = data.map(row => row.month);
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Discover Performance Report for {report_title}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {{ padding-top: 56px; }} /* Offset for fixed header */
+        h1 {{ border-bottom: 2px solid #dee2e6; padding-bottom: .5rem; }}
+        h2 {{ border-bottom: 2px solid #dee2e6; padding-bottom: .5rem; margin-top: 2rem; }}
+        .table thead th {{ background-color: #434343; color: #ffffff; text-align: left; }}
+        footer {{ margin-top: 3rem; text-align: center; color: #6c757d; }}
+    </style>
+</head>
+<body>
+    <header class="navbar navbar-expand-lg navbar-light bg-light border-bottom mb-4 fixed-top">
+        <div class="container-fluid">
+            <h1 class="h3 mb-0">Google Discover Performance Report for {report_title}</h1>
+        </div>
+    </header>
+    <main class="container-fluid py-4 flex-grow-1">
+        <p class="text-muted">Analysis for the period: {full_period_str}</p>
+        <div class="card my-4">
+            <div class="card-header"><h3>Clicks vs. Impressions</h3></div>
+            <div class="card-body"><canvas id="performanceChart"></canvas></div>
+        </div>
+        <h2>Data Table</h2>
+        <div class="table-responsive">{report_body}</div>
+    </main>
+    <footer class="footer mt-auto py-3 bg-light">
+        <div class="container text-center">
+            <span class="text-muted">Report generated on {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}. <a href="https://github.com/liamdelahunty/gsc-exporter" target="_blank">gsc-exporter</a></span>
+        </div>
+    </footer>
+    <script>
+        const data = {chart_data};
+        const labels = data.map(row => row.month);
 
-    new Chart(document.getElementById('performanceChart'), {{
-        type: 'line',
-        data: {{
-            labels: labels,
-            datasets: [
-                {{
-                    label: 'Clicks',
-                    data: data.map(row => row.clicks),
-                    borderColor: 'rgba(54, 162, 235, 1)',
-                    backgroundColor: 'rgba(54, 162, 235, 0.2)',
-                    yAxisID: 'yClicks',
-                    fill: false,
-                    tension: 0.1
-                }},
-                {{
-                    label: 'Impressions',
-                    data: data.map(row => row.impressions),
-                    borderColor: 'rgba(255, 99, 132, 1)',
-                    backgroundColor: 'rgba(255, 99, 132, 0.2)',
-                    yAxisID: 'yImpressions',
-                    fill: false,
-                    tension: 0.1
-                }}
-            ]
-        }},
-        options: {{
-            responsive: true,
-            maintainAspectRatio: false,
-            interaction: {{
-                mode: 'index',
-                intersect: false,
-            }},
-            scales: {{
-                yClicks: {{
-                    type: 'linear',
-                    display: true,
-                    position: 'left',
-                    title: {{
-                        display: true,
-                        text: 'Clicks'
-                    }}
-                }},
-                yImpressions: {{
-                    type: 'linear',
-                    display: true,
-                    position: 'right',
-                    title: {{
-                        display: true,
-                        text: 'Impressions'
+        new Chart(document.getElementById('performanceChart'), {{
+            type: 'line',
+            data: {{
+                labels: labels,
+                datasets: [
+                    {{
+                        label: 'Clicks',
+                        data: data.map(row => row.clicks),
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                        yAxisID: 'yClicks',
+                        fill: false,
+                        tension: 0.1
                     }},
-                    grid: {{
-                        drawOnChartArea: false, // only draw grid for the first Y axis
+                    {{
+                        label: 'Impressions',
+                        data: data.map(row => row.impressions),
+                        borderColor: 'rgba(255, 99, 132, 1)',
+                        backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                        yAxisID: 'yImpressions',
+                        fill: false,
+                        tension: 0.1
+                    }}
+                ]
+            }},
+            options: {{
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {{
+                    mode: 'index',
+                    intersect: false,
+                }},
+                scales: {{
+                    yClicks: {{
+                        type: 'linear',
+                        display: true,
+                        position: 'left',
+                        title: {{
+                            display: true,
+                            text: 'Clicks'
+                        }}
+                    }},
+                    yImpressions: {{
+                        type: 'linear',
+                        display: true,
+                        position: 'right',
+                        title: {{
+                            display: true,
+                            text: 'Impressions'
+                        }},
+                        grid: {{
+                            drawOnChartArea: false, // only draw grid for the first Y axis
+                        }}
                     }}
                 }}
             }}
-        }}
-    }});
-</script>
-</body></html>"""
+        }});
+    </script>
+</body>
+</html>
+"""
 
 def generate_site_sections(df, sorted_sites):
     """Generates HTML sections for each site."""
