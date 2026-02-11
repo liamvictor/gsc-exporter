@@ -156,18 +156,40 @@ def get_gsc_data(service, site_url, start_date, end_date, dimensions, search_typ
         
     return df
 
-def create_html_report(df, report_title, period_str, summary_data, limit=None, total_rows=None):
+def create_html_report(df, report_title, period_str, summary_data, limit=None, total_rows=None, search_type='web'):
     """Generates an HTML report from the DataFrame."""
 
     df_html = df.copy()
+    print(f"--- Debugging df_html dtypes ---")
+    print(df_html.dtypes)
+    print(f"--- End df_html dtypes ---")
 
-    # Format numbers for readability
-    df_html['clicks'] = df_html['clicks'].apply(lambda x: f"{int(x):,}")
-    df_html['impressions'] = df_html['impressions'].apply(lambda x: f"{int(x):,}")
+    # --- Robust Pre-format numeric columns to strings for HTML display ---
+    # Ensure all columns are truly numeric before formatting
+    # Clicks and Impressions as integers
+    df_html['clicks'] = pd.to_numeric(df_html['clicks'], errors='coerce').fillna(0).astype(int)
+    df_html['impressions'] = pd.to_numeric(df_html['impressions'], errors='coerce').fillna(0).astype(int)
+    
+    # CTR and Position as floats
+    df_html['ctr'] = pd.to_numeric(df_html['ctr'], errors='coerce').fillna(0.0)
+    df_html['position'] = pd.to_numeric(df_html['position'], errors='coerce').fillna(0.0)
+    
+    # Query # as float, then to int for display
     if 'Query #' in df_html.columns:
-        df_html['Query #'] = df_html['Query #'].apply(lambda x: f"{int(x):,}")
-    df_html['ctr'] = df_html['ctr'].apply(lambda x: f"{x:.2%}")
-    df_html['position'] = df_html['position'].apply(lambda x: f"{x:.2f}")
+        df_html['Query #'] = pd.to_numeric(df_html['Query #'], errors='coerce').fillna(0) # Keep as float for now, convert to int during formatting
+
+    # Now apply string formatting
+    df_html['clicks'] = df_html['clicks'].apply(lambda x: f"{x:,}") # Already int
+    df_html['impressions'] = df_html['impressions'].apply(lambda x: f"{x:,}") # Already int
+    df_html['ctr'] = df_html['ctr'].apply(lambda x: f"{x:.2%}") # Already float
+    
+    if search_type != 'discover':
+        df_html['position'] = df_html['position'].apply(lambda x: f"{x:.2f}") # Already float
+    else:
+        df_html['position'] = df_html['position'].apply(lambda x: f"{x:.2f}") # Already float
+
+    if 'Query #' in df_html.columns:
+        df_html['Query #'] = df_html['Query #'].apply(lambda x: f"{int(x):,}" if pd.notna(x) else "0")
 
     # --- Truncation Alert ---
     truncation_alert_html = ""
@@ -180,27 +202,57 @@ def create_html_report(df, report_title, period_str, summary_data, limit=None, t
         """
 
     # Manual HTML table generation using divs and bootstrap grid
-    table_header = '''
+    
+    # --- Build table header ---
+    header_cols_html = []
+    header_cols_html.append('<div class="col-6">Page</div>')
+    
+    if search_type == 'discover':
+        header_cols_html.append('<div class="col-2 text-end">Clicks</div>')
+        header_cols_html.append('<div class="col-2 text-end">Impressions</div>')
+        header_cols_html.append('<div class="col-2 text-end">CTR</div>')
+    else:
+        header_cols_html.append('<div class="col-1 text-end">Clicks</div>')
+        header_cols_html.append('<div class="col-1 text-end">Impressions</div>')
+        header_cols_html.append('<div class="col-1 text-end">CTR</div>')
+        header_cols_html.append('<div class="col-1 text-end">Position</div>')
+        header_cols_html.append('<div class="col-2 text-end">Query #</div>')
+
+    table_header = f"""
 <div class="container">
   <div class="row fw-bold py-2 bg-dark text-white">
-    <div class="col-6">Page</div>
-    <div class="col-2 text-end">Clicks</div>
-    <div class="col-2 text-end">Impressions</div>
-    <div class="col-2 text-end">CTR</div>
+    {''.join(header_cols_html)}
   </div>
-'''
+"""
 
+    # --- Build table body ---
     table_body = ""
     for i, row in df_html.iterrows():
         bg_class = "bg-light" if i % 2 == 0 else ""
-        table_body += f'''
+        row_cols_html = []
+        
+        row_cols_html.append(f'<div class="col-6" style="word-wrap: break-word; overflow-wrap: break-word;">{row["page"]}</div>')
+
+        if search_type == 'discover':
+            row_cols_html.append(f'<div class="col-2 text-end">{row["clicks"]}</div>')
+            row_cols_html.append(f'<div class="col-2 text-end">{row["impressions"]}</div>')
+            row_cols_html.append(f'<div class="col-2 text-end">{row["ctr"]}</div>')
+        else:
+            row_cols_html.append(f'<div class="col-1 text-end">{row["clicks"]}</div>')
+            row_cols_html.append(f'<div class="col-1 text-end">{row["impressions"]}</div>')
+            row_cols_html.append(f'<div class="col-1 text-end">{row["ctr"]}</div>')
+            row_cols_html.append(f'<div class="col-1 text-end">{row["position"]}</div>')
+            # Check if 'Query #' exists before formatting, in case it was dropped or not fetched
+            if 'Query #' in row:
+                row_cols_html.append(f'<div class="col-2 text-end">{row["Query #"]}</div>')
+            else:
+                row_cols_html.append(f'<div class="col-2 text-end">0</div>') # Default to 0 or N/A
+
+        table_body += f"""
   <div class="row py-2 border-bottom {bg_class}">
-    <div class="col-6" style="word-wrap: break-word; overflow-wrap: break-word;">{row['page']}</div>
-    <div class="col-2 text-end">{row['clicks']}</div>
-    <div class="col-2 text-end">{row['impressions']}</div>
-    <div class="col-2 text-end">{row['ctr']}</div>
+    {''.join(row_cols_html)}
   </div>
-'''
+"""
 
     report_body = table_header + table_body + '</div>'
 
@@ -209,20 +261,57 @@ def create_html_report(df, report_title, period_str, summary_data, limit=None, t
         summary_html += f"<tr><th style='width: 50%;'>{key}</th><td>{value}</td></tr>"
     summary_html += "</table>"
 
+    report_body_content = table_header + table_body + '</div>'
+
+    summary_html = "<h2 class='mt-5'>Overall Summary</h1><table class='table table-bordered' style='max-width: 500px;'>"
+    for key, value in summary_data.items():
+        summary_html += f"<tr><th style='width: 50%;'>{key}</th><td>{value}</td></tr>"
+    summary_html += "</table>"
+    
+    # Combined main content
+    main_content_html = f"""
+        <div class="container-fluid">
+            <p class="text-muted">Analysis for the period: {period_str}</p>
+            {truncation_alert_html}
+            {report_body_content}
+            {summary_html}
+        </div>
+    """
+
     return f"""
-<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>{report_title}</title><link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-<style>
-body {{ padding: 2rem; }}
-h1, h2 {{ border-bottom: 2px solid #dee2e6; padding-bottom: .5rem; margin-top: 2rem; }}
-footer {{ margin-top: 3rem; text-align: center; color: #6c757d; }}
-</style></head>
-<body><div class="container-fluid"><h1>{report_title}</h1><p class="text-muted">Analysis for the period: {period_str}</p>
-{truncation_alert_html}
-{report_body}
-{summary_html}
-</div>
-<footer><p><a href="https://github.com/liamdelahunty/gsc-exporter" target="_blank">gsc-exporter</a></p></footer></body></html>"""
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{report_title}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {{ padding-top: 56px; }} /* Offset for fixed header */
+        h1 {{ border-bottom: 2px solid #dee2e6; padding-bottom: .5rem; }}
+        h2 {{ border-bottom: 2px solid #dee2e6; padding-bottom: .5rem; margin-top: 2rem; }} /* Added h2 style */
+        .table-responsive {{ margin-top: 20px; }} /* Added from url-inspection-report.py */
+        footer {{ margin-top: 3rem; text-align: center; color: #6c757d; }} /* Retained from page-level-report.py */
+    </style>
+</head>
+<body>
+    <header class="navbar navbar-expand-lg navbar-light bg-light border-bottom mb-4 fixed-top">
+        <div class="container-fluid">
+            <h1 class="h3 mb-0">{report_title}</h1>
+        </div>
+    </header>
+    <main class="container-fluid py-4 flex-grow-1">
+        {main_content_html}
+    </main>
+    <footer class="footer mt-auto py-3 bg-light">
+        <div class="container text-center">
+            <span class="text-muted">Report generated on {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}. <a href="https://github.com/liamdelahunty/gsc-exporter" target="_blank">gsc-exporter</a></span>
+        </div>
+    </footer>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
+"""
 
 
 def main():
@@ -447,7 +536,8 @@ def main():
             period_str=f"{start_date} to {end_date}",
             summary_data=summary_data,
             limit=args.limit,
-            total_rows=len(page_level_data)
+            total_rows=len(page_level_data),
+            search_type=args.search_type  # Pass search_type
         )
         with open(html_output_path, 'w', encoding='utf-8') as f:
             f.write(html_output)
