@@ -461,8 +461,8 @@ The `--sites-file` should contain one URL per line.
 
 ### Output
 
-*   **Single URL:** Generates an HTML report in `output/<hostname>/` named `inspection-<path-filename>-YYYY-MM-DD.html`. This report provides all available inspection data from the API in a detailed table.
-*   **List of URLs:** Generates a single HTML summary report in `output/account/` named `inspection-<site-list-filename>-YYYY-MM-DD.html`. This report includes a table summarizing key inspection data for each URL in the list.
+*   **Single URL:** Generates an HTML report and a CSV file in `output/<hostname>/` named `inspection-<path-filename>-YYYY-MM-DD.html` and `inspection-<path-filename>-YYYY-MM-DD.csv` respectively. The HTML report provides all available inspection data from the API in a detailed table, while the CSV contains the raw, flattened data.
+*   **List of URLs:** Generates a single HTML summary report and a CSV summary file in `output/account/` named `inspection-<site-list-filename>-YYYY-MM-DD.html` and `inspection-<site-list-filename>-YYYY-MM-DD.csv` respectively. The HTML report includes a table summarizing key inspection data for each URL in the list, and the CSV contains a flattened version of this summary.
     Error handling for "URL not found in property" is integrated into the reports.
 
 ---

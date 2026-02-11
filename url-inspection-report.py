@@ -11,6 +11,7 @@ Usage:
     # Inspect a list of URLs from a file
     python url-inspection-report.py --sites-file my_urls.txt
 """
+import pandas as pd
 import os
 import argparse
 import re
@@ -119,6 +120,52 @@ def parse_url_for_paths(url):
 
     return clean_hostname, path_filename
 
+def _format_inspection_data_for_csv(inspect_url, inspection_data):
+    """
+    Flattens raw inspection data into a dictionary suitable for a CSV row.
+    Includes error handling and formatted last crawl time.
+    """
+    row = {'URL': inspect_url}
+
+    if inspection_data and inspection_data.get("error"):
+        row['Error'] = inspection_data['error']
+        return row
+    elif not inspection_data:
+        row['Error'] = 'No inspection data received.'
+        return row
+    
+    index_status = inspection_data.get('indexStatusResult', {})
+    mobile_usability = inspection_data.get('mobileUsability', {})
+    rich_results = inspection_data.get('richResults', [])
+
+    # Format Last Crawl Time
+    last_crawl_time_raw = index_status.get('lastCrawlTime')
+    formatted_last_crawl_time = 'N/A'
+    if last_crawl_time_raw and last_crawl_time_raw != 'N/A':
+        try:
+            dt_object = datetime.fromisoformat(last_crawl_time_raw.replace('Z', '+00:00'))
+            formatted_last_crawl_time = dt_object.strftime("%Y-%m-%d %H:%M:%S")
+        except ValueError:
+            formatted_last_crawl_time = last_crawl_time_raw # Keep original if parsing fails
+
+    row.update({
+        "Verdict": index_status.get('verdict', 'N/A'),
+        "Indexing State": index_status.get('indexingState', 'N/A'),
+        "Page Fetch State": index_status.get('pageFetchState', 'N/A'),
+        "Last Crawl Time": formatted_last_crawl_time,
+        "Google Canonical": index_status.get('googleCanonicalUrl', 'N/A'),
+        "User Canonical": index_status.get('userCanonical', 'N/A'),
+        "Robots.txt State": index_status.get('robotsTxtState', 'N/A'),
+        "In Sitemap": index_status.get('sitemap', 'N/A'),
+        "Crawled As": index_status.get('crawledAs', 'N/A'),
+        "Coverage State": index_status.get('coverageState', 'N/A'),
+        "Referring URLs": ', '.join(index_status.get('referringUrls', [])),
+        "Mobile Usability Verdict": mobile_usability.get('verdict', 'N/A'),
+        "Mobile Usability Issues": ', '.join([item.get('issueType', 'N/A') for item in mobile_usability.get('issues', [])]),
+        "Rich Results Status": ', '.join([item.get('richResultType', 'N/A') + ' - ' + item.get('verdict', 'N/A') for item in rich_results])
+    })
+    return row
+
 def create_single_url_html_report(inspect_url, inspection_data, output_path):
     """
     Generates an HTML report for a single URL inspection.
@@ -219,6 +266,20 @@ def create_single_url_html_report(inspect_url, inspection_data, output_path):
     with open(output_path, 'w', encoding='utf-8') as f:
         f.write(html_template)
     print(f"Report saved to {output_path}")
+
+def create_single_url_csv_report(inspect_url, inspection_data, output_path):
+    """
+    Generates a CSV report for a single URL inspection.
+    """
+    formatted_data = _format_inspection_data_for_csv(inspect_url, inspection_data)
+    df = pd.DataFrame([formatted_data])
+    
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    try:
+        df.to_csv(output_path, index=False, encoding='utf-8')
+        print(f"CSV report saved to {output_path}")
+    except Exception as e:
+        print(f"Error saving CSV report to {output_path}: {e}")
 
 def create_list_url_html_report(site_list_name, all_inspection_results, output_path):
     """
@@ -330,6 +391,23 @@ def create_list_url_html_report(site_list_name, all_inspection_results, output_p
         f.write(html_template)
     print(f"Summary report saved to {output_path}")
 
+def create_list_url_csv_report(site_list_name, all_inspection_results, output_path):
+    """
+    Generates a CSV report for a list of URL inspections.
+    """
+    formatted_data_list = []
+    for url, inspection_data in all_inspection_results.items():
+        formatted_data_list.append(_format_inspection_data_for_csv(url, inspection_data))
+    
+    df = pd.DataFrame(formatted_data_list)
+    
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    try:
+        df.to_csv(output_path, index=False, encoding='utf-8')
+        print(f"CSV summary report saved to {output_path}")
+    except Exception as e:
+        print(f"Error saving CSV summary report to {output_path}: {e}")
+
 def get_site_url_for_inspection(url):
     """
     Derives the GSC site property URL (e.g., https://example.com/) from a given URL.
@@ -371,24 +449,32 @@ def main():
         hostname, path_filename = parse_url_for_paths(args.url)
         
         output_dir = os.path.join('output', hostname)
-        output_filename = f"inspection-{path_filename}-{current_date_str}.html"
-        output_path = os.path.join(output_dir, output_filename)
+        output_filename_base = f"inspection-{path_filename}-{current_date_str}"
         
         inspection_data = get_url_inspection_data(service, site_url, args.url)
-        create_single_url_html_report(args.url, inspection_data, output_path)
+        
+        create_single_url_html_report(args.url, inspection_data, os.path.join(output_dir, output_filename_base + ".html"))
+        create_single_url_csv_report(args.url, inspection_data, os.path.join(output_dir, output_filename_base + ".csv"))
 
     elif args.sites_file:
         print(f"Inspecting URLs from file: {args.sites_file}")
         all_inspection_results = {}
         site_list_name = os.path.splitext(os.path.basename(args.sites_file))[0]
         
-        
         file_path = args.sites_file
-        if not os.path.isabs(file_path):
-            file_path = os.path.join('site-lists', file_path)
-            
-        with open(file_path, 'r', encoding='utf-8') as f:
-            urls = [line.strip() for line in f if line.strip() and not line.startswith('#')]
+        # Try to open the file directly first
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                urls = [line.strip() for line in f if line.strip() and not line.startswith('#')]
+        except FileNotFoundError:
+            # If not found, try prepending 'site-lists/'
+            try:
+                file_path = os.path.join('site-lists', args.sites_file)
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    urls = [line.strip() for line in f if line.strip() and not line.startswith('#')]
+            except FileNotFoundError:
+                print(f"Error: The sites file '{args.sites_file}' or 'site-lists/{args.sites_file}' was not found. Exiting.")
+                return
 
         if not urls:
             print(f"No valid URLs found in {args.sites_file}. Exiting.")
@@ -401,10 +487,10 @@ def main():
             all_inspection_results[url] = inspection_data
         
         output_dir = os.path.join('output', 'account') # As per requirement for list output
-        output_filename = f"inspection-{site_list_name}-{current_date_str}.html"
-        output_path = os.path.join(output_dir, output_filename)
+        output_filename_base = f"inspection-{site_list_name}-{current_date_str}"
         
-        create_list_url_html_report(site_list_name, all_inspection_results, output_path)
+        create_list_url_html_report(site_list_name, all_inspection_results, os.path.join(output_dir, output_filename_base + ".html"))
+        create_list_url_csv_report(site_list_name, all_inspection_results, os.path.join(output_dir, output_filename_base + ".csv"))
 
 if __name__ == '__main__':
     main()
