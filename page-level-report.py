@@ -184,11 +184,9 @@ def create_html_report(df, report_title, period_str, summary_data, limit=None, t
 <div class="container">
   <div class="row fw-bold py-2 bg-dark text-white">
     <div class="col-6">Page</div>
-    <div class="col-1 text-end">Clicks</div>
-    <div class="col-1 text-end">Impressions</div>
-    <div class="col-1 text-end">CTR</div>
-    <div class="col-1 text-end">Position</div>
-    <div class="col-2 text-end">Query #</div>
+    <div class="col-2 text-end">Clicks</div>
+    <div class="col-2 text-end">Impressions</div>
+    <div class="col-2 text-end">CTR</div>
   </div>
 '''
 
@@ -198,11 +196,9 @@ def create_html_report(df, report_title, period_str, summary_data, limit=None, t
         table_body += f'''
   <div class="row py-2 border-bottom {bg_class}">
     <div class="col-6" style="word-wrap: break-word; overflow-wrap: break-word;">{row['page']}</div>
-    <div class="col-1 text-end">{row['clicks']}</div>
-    <div class="col-1 text-end">{row['impressions']}</div>
-    <div class="col-1 text-end">{row['ctr']}</div>
-    <div class="col-1 text-end">{row['position']}</div>
-    <div class="col-2 text-end">{row['Query #']}</div>
+    <div class="col-2 text-end">{row['clicks']}</div>
+    <div class="col-2 text-end">{row['impressions']}</div>
+    <div class="col-2 text-end">{row['ctr']}</div>
   </div>
 '''
 
@@ -333,7 +329,9 @@ def main():
     host_for_filename = host_dir.replace('.', '-')
 
     filename_suffix = "-no-query" if args.strip_query_strings else ""
-    file_prefix = f"page-level-report-{host_for_filename}-{period_label}-{start_date}-to-{end_date}{filename_suffix}"
+    # Generate a more descriptive filename suffix if search_type is not 'web'
+    search_type_suffix = f"-{args.search_type}" if args.search_type != 'web' else ""
+    file_prefix = f"page-level-report-{host_for_filename}{search_type_suffix}-{period_label}-{start_date}-to-{end_date}{filename_suffix}"
     csv_output_path = os.path.join(output_dir, f"{file_prefix}.csv")
     html_output_path = os.path.join(output_dir, f"{file_prefix}.html")
 
@@ -360,8 +358,19 @@ def main():
             print("No page data found for the specified period. Exiting.")
             return
             
+        # Handle 'position' column for discover search type, as it's not present in Discover data
+        if args.search_type == 'discover':
+            df_pages['position'] = 0.0 # Discover data does not have a 'position'
+
+            
         # Fetch page-query data (potentially sampled) to get query counts
-        df_page_query = get_gsc_data(service, site_url, start_date, end_date, ['page', 'query'], args.search_type)
+        if args.search_type == 'discover':
+            # For 'discover' search type, queries are not relevant, so we don't fetch page-query data.
+            # This avoids the "Request contains an invalid argument." error.
+            df_page_query = pd.DataFrame()
+        else:
+            # Fetch page-query data (potentially sampled) to get query counts
+            df_page_query = get_gsc_data(service, site_url, start_date, end_date, ['page', 'query'], args.search_type)
         
         # Strip query strings if the flag is set
         if args.strip_query_strings:
