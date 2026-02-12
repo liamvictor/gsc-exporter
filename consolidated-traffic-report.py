@@ -277,6 +277,78 @@ def create_single_site_html_report(df, report_title, full_period_str):
     </div>
     """
 
+    # HTML for Monthly Clicks Breakdown table
+    monthly_clicks_table_rows = ""
+    for index, row in df.sort_values(by='month', ascending=True).iterrows():
+        monthly_total_clicks = row['discover_clicks'] + row['web_clicks']
+        monthly_discover_clicks_percent = (row['discover_clicks'] / monthly_total_clicks) if monthly_total_clicks > 0 else 0
+        monthly_web_clicks_percent = (row['web_clicks'] / monthly_total_clicks) if monthly_total_clicks > 0 else 0
+        monthly_clicks_table_rows += f"""
+                <tr>
+                    <td>{row['month']}</td>
+                    <td class="text-end">{row['discover_clicks']:,.0f}</td>
+                    <td class="text-end">{monthly_discover_clicks_percent:.2%}</td>
+                    <td class="text-end">{row['web_clicks']:,.0f}</td>
+                    <td class="text-end">{monthly_web_clicks_percent:.2%}</td>
+                    <td class="text-end">{monthly_total_clicks:,.0f}</td>
+                </tr>
+        """
+    monthly_clicks_table = f"""
+    <div class="table-responsive">
+        <table class="table table-bordered table-sm">
+            <thead class="table-dark">
+                <tr>
+                    <th>Month</th>
+                    <th class="text-end">Discover Clicks</th>
+                    <th class="text-end">Discover %</th>
+                    <th class="text-end">Web Clicks</th>
+                    <th class="text-end">Web %</th>
+                    <th class="text-end">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {monthly_clicks_table_rows}
+            </tbody>
+        </table>
+    </div>
+    """
+
+    # HTML for Monthly Impressions Breakdown table
+    monthly_impressions_table_rows = ""
+    for index, row in df.sort_values(by='month', ascending=True).iterrows():
+        monthly_total_impressions = row['discover_impressions'] + row['web_impressions']
+        monthly_discover_impressions_percent = (row['discover_impressions'] / monthly_total_impressions) if monthly_total_impressions > 0 else 0
+        monthly_web_impressions_percent = (row['web_impressions'] / monthly_total_impressions) if monthly_total_impressions > 0 else 0
+        monthly_impressions_table_rows += f"""
+                <tr>
+                    <td>{row['month']}</td>
+                    <td class="text-end">{row['discover_impressions']:,.0f}</td>
+                    <td class="text-end">{monthly_discover_impressions_percent:.2%}</td>
+                    <td class="text-end">{row['web_impressions']:,.0f}</td>
+                    <td class="text-end">{monthly_web_impressions_percent:.2%}</td>
+                    <td class="text-end">{monthly_total_impressions:,.0f}</td>
+                </tr>
+        """
+    monthly_impressions_table = f"""
+    <div class="table-responsive">
+        <table class="table table-bordered table-sm">
+            <thead class="table-dark">
+                <tr>
+                    <th>Month</th>
+                    <th class="text-end">Discover Impressions</th>
+                    <th class="text-end">Discover %</th>
+                    <th class="text-end">Web Impressions</th>
+                    <th class="text-end">Web %</th>
+                    <th class="text-end">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {monthly_impressions_table_rows}
+            </tbody>
+        </table>
+    </div>
+    """
+
     return f"""
 <!DOCTYPE html>
 <html lang="en">
@@ -315,7 +387,7 @@ def create_single_site_html_report(df, report_title, full_period_str):
             <div class="card-body"><canvas id="impressionsChart"></canvas></div>
         </div>
         
-        <h2 class="mt-5">Summary Tables</h2>
+        <h2 class="mt-5">Overall Summary Tables</h2>
         <div class="row">
             <div class="col-xl-6">
                 <div class="card mb-4">
@@ -330,6 +402,26 @@ def create_single_site_html_report(df, report_title, full_period_str):
                     <div class="card-header"><h3>Discover Impressions vs. Web Impressions</h3></div>
                     <div class="card-body">
                         {impressions_summary_table}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <h2 class="mt-5">Monthly Breakdown Tables</h2>
+        <div class="row">
+            <div class="col-xl-6">
+                <div class="card mb-4">
+                    <div class="card-header"><h3>Monthly Clicks Breakdown</h3></div>
+                    <div class="card-body">
+                        {monthly_clicks_table}
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-6">
+                <div class="card mb-4">
+                    <div class="card-header"><h3>Monthly Impressions Breakdown</h3></div>
+                    <div class="card-body">
+                        {monthly_impressions_table}
                     </div>
                 </div>
             </div>
