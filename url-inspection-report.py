@@ -120,12 +120,12 @@ def parse_url_for_paths(url):
 
     return clean_hostname, path_filename
 
-def _format_inspection_data_for_csv(inspect_url, inspection_data):
+def _format_inspection_data_for_csv(inspect_url, inspection_data, request_timestamp):
     """
     Flattens raw inspection data into a dictionary suitable for a CSV row.
     Includes error handling and formatted last crawl time.
     """
-    row = {'URL': inspect_url}
+    row = {'Request Timestamp': request_timestamp, 'URL': inspect_url}
 
     if inspection_data and inspection_data.get("error"):
         row['Error'] = inspection_data['error']
@@ -267,11 +267,11 @@ def create_single_url_html_report(inspect_url, inspection_data, output_path):
         f.write(html_template)
     print(f"Report saved to {output_path}")
 
-def create_single_url_csv_report(inspect_url, inspection_data, output_path):
+def create_single_url_csv_report(inspect_url, inspection_data, output_path, request_timestamp):
     """
     Generates a CSV report for a single URL inspection.
     """
-    formatted_data = _format_inspection_data_for_csv(inspect_url, inspection_data)
+    formatted_data = _format_inspection_data_for_csv(inspect_url, inspection_data, request_timestamp)
     df = pd.DataFrame([formatted_data])
     
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
@@ -281,11 +281,30 @@ def create_single_url_csv_report(inspect_url, inspection_data, output_path):
     except Exception as e:
         print(f"Error saving CSV report to {output_path}: {e}")
 
-def create_list_url_html_report(site_list_name, all_inspection_results, output_path):
+def _make_clickable_url(url, max_length=100):
+    """
+    Creates an HTML anchor tag for a URL.
+    If the URL has query parameters, the anchor text is shortened.
+    A max_length can be set for the anchor text.
+    """
+    if not isinstance(url, str) or not url.strip():
+        return 'N/A'
+    
+    display_text = url
+    if '?' in url:
+        display_text = url.split('?')[0]
+    
+    if len(display_text) > max_length:
+        display_text = display_text[:max_length] + '...'
+
+    return f'<a href="{url}" target="_blank">{display_text}</a>'
+
+def create_list_url_html_report(site_list_name, all_inspection_results, output_path, request_timestamp):
     """
     Generates an HTML report for a list of URL inspections, presenting data in a summary table.
     """
-    report_title = f"URL Inspection Summary Report for: {site_list_name}"
+    report_title = f"URL Inspection Summary for: {site_list_name}"
+    sub_heading = f"Report generated on: {request_timestamp}"
 
     table_header = """
     <thead>
@@ -293,11 +312,11 @@ def create_list_url_html_report(site_list_name, all_inspection_results, output_p
             <th>URL</th>
             <th>Verdict</th>
             <th>Indexing State</th>
-            <th>Page Fetch State</th>
             <th>Last Crawl Time</th>
-            <th>Google Canonical</th>
             <th>Robots.txt State</th>
-            <th>Mobile Usability Verdict</th>
+            <th>User Canonical</th>
+            <th>Coverage State</th>
+            <th>Referring URLs</th>
         </tr>
     </thead>
     """
@@ -306,20 +325,19 @@ def create_list_url_html_report(site_list_name, all_inspection_results, output_p
         if inspection_data and inspection_data.get("error"):
             table_rows += f"""
             <tr>
-                <td><a href="{url}" target="_blank">{url}</a></td>
+                <td>{_make_clickable_url(url)}</td>
                 <td colspan="7" class="text-danger">{inspection_data['error']}</td>
             </tr>
             """
         elif not inspection_data:
              table_rows += f"""
             <tr>
-                <td><a href="{url}" target="_blank">{url}</a></td>
+                <td>{_make_clickable_url(url)}</td>
                 <td colspan="7" class="text-warning">No inspection data received.</td>
             </tr>
             """
         else:
             index_status = inspection_data.get('indexStatusResult', {})
-            mobile_usability = inspection_data.get('mobileUsability', {})
             
             last_crawl_time_raw = index_status.get('lastCrawlTime')
             formatted_last_crawl_time = 'N/A'
@@ -328,18 +346,21 @@ def create_list_url_html_report(site_list_name, all_inspection_results, output_p
                     dt_object = datetime.fromisoformat(last_crawl_time_raw.replace('Z', '+00:00'))
                     formatted_last_crawl_time = dt_object.strftime("%Y-%m-%d %H:%M:%S")
                 except ValueError:
-                    formatted_last_crawl_time = last_crawl_time_raw # Keep original if parsing fails
+                    formatted_last_crawl_time = last_crawl_time_raw
+
+            user_canonical = index_status.get('userCanonical', 'N/A')
+            referring_urls_list = index_status.get('referringUrls', [])
             
             table_rows += f"""
             <tr>
-                <td><a href="{url}" target="_blank">{url}</a></td>
+                <td>{_make_clickable_url(url)}</td>
                 <td>{index_status.get('verdict', 'N/A')}</td>
                 <td>{index_status.get('indexingState', 'N/A')}</td>
-                <td>{index_status.get('pageFetchState', 'N/A')}</td>
                 <td>{formatted_last_crawl_time}</td>
-                <td>{index_status.get('googleCanonicalUrl', 'N/A')}</td>
                 <td>{index_status.get('robotsTxtState', 'N/A')}</td>
-                <td>{mobile_usability.get('verdict', 'N/A')}</td>
+                <td>{_make_clickable_url(user_canonical)}</td>
+                <td>{index_status.get('coverageState', 'N/A')}</td>
+                <td>{', '.join([_make_clickable_url(ref) for ref in referring_urls_list]) if referring_urls_list else 'N/A'}</td>
             </tr>
             """
     
@@ -363,15 +384,19 @@ def create_list_url_html_report(site_list_name, all_inspection_results, output_p
     <title>{report_title}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body {{ padding-top: 56px; }}
+        body {{ padding-top: 80px; }}
         h1 {{ padding-bottom: .5rem; }}
+        .sub-heading {{ color: #6c757d; }}
         .table-responsive {{ margin-top: 20px; }}
     </style>
 </head>
 <body>
     <header class="navbar navbar-expand-lg navbar-light bg-light border-bottom mb-4 fixed-top">
         <div class="container-fluid">
-            <h1 class="h3 mb-0">{report_title}</h1>
+            <div>
+                <h1 class="h3 mb-0">{report_title}</h1>
+                <p class="sub-heading mb-0">{sub_heading}</p>
+            </div>
         </div>
     </header>
     <main class="container-fluid py-4 flex-grow-1">
@@ -391,13 +416,13 @@ def create_list_url_html_report(site_list_name, all_inspection_results, output_p
         f.write(html_template)
     print(f"Summary report saved to {output_path}")
 
-def create_list_url_csv_report(site_list_name, all_inspection_results, output_path):
+def create_list_url_csv_report(site_list_name, all_inspection_results, output_path, request_timestamp):
     """
     Generates a CSV report for a list of URL inspections.
     """
     formatted_data_list = []
     for url, inspection_data in all_inspection_results.items():
-        formatted_data_list.append(_format_inspection_data_for_csv(url, inspection_data))
+        formatted_data_list.append(_format_inspection_data_for_csv(url, inspection_data, request_timestamp))
     
     df = pd.DataFrame(formatted_data_list)
     
@@ -442,6 +467,7 @@ def main():
         return
 
     current_date_str = datetime.now().strftime("%Y-%m-%d")
+    request_timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     if args.url:
         print(f"Inspecting single URL: {args.url}")
@@ -454,7 +480,7 @@ def main():
         inspection_data = get_url_inspection_data(service, site_url, args.url)
         
         create_single_url_html_report(args.url, inspection_data, os.path.join(output_dir, output_filename_base + ".html"))
-        create_single_url_csv_report(args.url, inspection_data, os.path.join(output_dir, output_filename_base + ".csv"))
+        create_single_url_csv_report(args.url, inspection_data, os.path.join(output_dir, output_filename_base + ".csv"), request_timestamp)
 
     elif args.sites_file:
         print(f"Inspecting URLs from file: {args.sites_file}")
@@ -489,8 +515,8 @@ def main():
         output_dir = os.path.join('output', 'account') # As per requirement for list output
         output_filename_base = f"inspection-{site_list_name}-{current_date_str}"
         
-        create_list_url_html_report(site_list_name, all_inspection_results, os.path.join(output_dir, output_filename_base + ".html"))
-        create_list_url_csv_report(site_list_name, all_inspection_results, os.path.join(output_dir, output_filename_base + ".csv"))
+        create_list_url_html_report(site_list_name, all_inspection_results, os.path.join(output_dir, output_filename_base + ".html"), request_timestamp)
+        create_list_url_csv_report(site_list_name, all_inspection_results, os.path.join(output_dir, output_filename_base + ".csv"), request_timestamp)
 
 if __name__ == '__main__':
     main()
