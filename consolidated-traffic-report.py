@@ -192,6 +192,9 @@ def create_single_site_html_report(df, report_title, full_period_str):
     df_table['web_clicks'] = df_table['web_clicks'].apply(lambda x: f"{x:,.0f}")
     df_table['web_impressions'] = df_table['web_impressions'].apply(lambda x: f"{x:,.0f}")
     df_table['web_ctr'] = df_table['web_ctr'].apply(lambda x: f"{x:.2%}")
+    df_table['news_clicks'] = df_table['news_clicks'].apply(lambda x: f"{x:,.0f}")
+    df_table['news_impressions'] = df_table['news_impressions'].apply(lambda x: f"{x:,.0f}")
+    df_table['news_ctr'] = df_table['news_ctr'].apply(lambda x: f"{x:.2%}")
     df_table['total_clicks'] = df_table['total_clicks'].apply(lambda x: f"{x:,.0f}")
     df_table['total_impressions'] = df_table['total_impressions'].apply(lambda x: f"{x:,.0f}")
     df_table['total_ctr'] = df_table['total_ctr'].apply(lambda x: f"{x:.2%}")
@@ -204,20 +207,24 @@ def create_single_site_html_report(df, report_title, full_period_str):
     # Calculate overall totals for the new tables
     total_discover_clicks = df['discover_clicks'].sum()
     total_web_clicks = df['web_clicks'].sum()
-    total_clicks_overall = total_discover_clicks + total_web_clicks
+    total_news_clicks = df['news_clicks'].sum()
+    total_clicks_overall = total_discover_clicks + total_web_clicks + total_news_clicks
 
     total_discover_impressions = df['discover_impressions'].sum()
     total_web_impressions = df['web_impressions'].sum()
-    total_impressions_overall = total_discover_impressions + total_web_impressions
+    total_news_impressions = df['news_impressions'].sum()
+    total_impressions_overall = total_discover_impressions + total_web_impressions + total_news_impressions
 
     # Calculate percentages
     discover_clicks_percent = (total_discover_clicks / total_clicks_overall) if total_clicks_overall > 0 else 0
     web_clicks_percent = (total_web_clicks / total_clicks_overall) if total_clicks_overall > 0 else 0
+    news_clicks_percent = (total_news_clicks / total_clicks_overall) if total_clicks_overall > 0 else 0
 
     discover_impressions_percent = (total_discover_impressions / total_impressions_overall) if total_impressions_overall > 0 else 0
     web_impressions_percent = (total_web_impressions / total_impressions_overall) if total_impressions_overall > 0 else 0
+    news_impressions_percent = (total_news_impressions / total_impressions_overall) if total_impressions_overall > 0 else 0
 
-    # HTML for Discover Clicks vs Web Clicks table
+    # HTML for Discover Clicks vs Web Clicks vs News Clicks table
     clicks_summary_table = f"""
     <div class="table-responsive">
         <table class="table table-bordered table-sm">
@@ -226,6 +233,7 @@ def create_single_site_html_report(df, report_title, full_period_str):
                     <th>Metric</th>
                     <th class="text-end">Discover Clicks</th>
                     <th class="text-end">Web Clicks</th>
+                    <th class="text-end">News Clicks</th>
                     <th class="text-end">Total Clicks</th>
                 </tr>
             </thead>
@@ -234,13 +242,15 @@ def create_single_site_html_report(df, report_title, full_period_str):
                     <td>Total</td>
                     <td class="text-end">{total_discover_clicks:,.0f}</td>
                     <td class="text-end">{total_web_clicks:,.0f}</td>
+                    <td class="text-end">{total_news_clicks:,.0f}</td>
                     <td class="text-end">{total_clicks_overall:,.0f}</td>
                 </tr>
                 <tr>
                     <td>Percentage</td>
                     <td class="text-end">{discover_clicks_percent:.2%}</td>
                     <td class="text-end">{web_clicks_percent:.2%}</td>
-                    <td class="text-end">{(discover_clicks_percent + web_clicks_percent):.2%}</td>
+                    <td class="text-end">{news_clicks_percent:.2%}</td>
+                    <td class="text-end">{(discover_clicks_percent + web_clicks_percent + news_clicks_percent):.2%}</td>
                 </tr>
             </tbody>
         </table>
@@ -256,6 +266,7 @@ def create_single_site_html_report(df, report_title, full_period_str):
                     <th>Metric</th>
                     <th class="text-end">Discover Impressions</th>
                     <th class="text-end">Web Impressions</th>
+                    <th class="text-end">News Impressions</th>
                     <th class="text-end">Total Impressions</th>
                 </tr>
             </thead>
@@ -264,13 +275,15 @@ def create_single_site_html_report(df, report_title, full_period_str):
                     <td>Total</td>
                     <td class="text-end">{total_discover_impressions:,.0f}</td>
                     <td class="text-end">{total_web_impressions:,.0f}</td>
+                    <td class="text-end">{total_news_impressions:,.0f}</td>
                     <td class="text-end">{total_impressions_overall:,.0f}</td>
                 </tr>
                 <tr>
                     <td>Percentage</td>
                     <td class="text-end">{discover_impressions_percent:.2%}</td>
                     <td class="text-end">{web_impressions_percent:.2%}</td>
-                    <td class="text-end">{(discover_impressions_percent + web_impressions_percent):.2%}</td>
+                    <td class="text-end">{news_impressions_percent:.2%}</td>
+                    <td class="text-end">{(discover_impressions_percent + web_impressions_percent + news_impressions_percent):.2%}</td>
                 </tr>
             </tbody>
         </table>
@@ -280,9 +293,10 @@ def create_single_site_html_report(df, report_title, full_period_str):
     # HTML for Monthly Clicks Breakdown table
     monthly_clicks_table_rows = ""
     for index, row in df.sort_values(by='month', ascending=True).iterrows():
-        monthly_total_clicks = row['discover_clicks'] + row['web_clicks']
+        monthly_total_clicks = row['discover_clicks'] + row['web_clicks'] + row['news_clicks']
         monthly_discover_clicks_percent = (row['discover_clicks'] / monthly_total_clicks) if monthly_total_clicks > 0 else 0
         monthly_web_clicks_percent = (row['web_clicks'] / monthly_total_clicks) if monthly_total_clicks > 0 else 0
+        monthly_news_clicks_percent = (row['news_clicks'] / monthly_total_clicks) if monthly_total_clicks > 0 else 0
         monthly_clicks_table_rows += f"""
                 <tr>
                     <td>{row['month']}</td>
@@ -290,6 +304,8 @@ def create_single_site_html_report(df, report_title, full_period_str):
                     <td class="text-end">{monthly_discover_clicks_percent:.2%}</td>
                     <td class="text-end">{row['web_clicks']:,.0f}</td>
                     <td class="text-end">{monthly_web_clicks_percent:.2%}</td>
+                    <td class="text-end">{row['news_clicks']:,.0f}</td>
+                    <td class="text-end">{monthly_news_clicks_percent:.2%}</td>
                     <td class="text-end">{monthly_total_clicks:,.0f}</td>
                 </tr>
         """
@@ -303,6 +319,8 @@ def create_single_site_html_report(df, report_title, full_period_str):
                     <th class="text-end">Discover %</th>
                     <th class="text-end">Web Clicks</th>
                     <th class="text-end">Web %</th>
+                    <th class="text-end">News Clicks</th>
+                    <th class="text-end">News %</th>
                     <th class="text-end">Total</th>
                 </tr>
             </thead>
@@ -316,9 +334,10 @@ def create_single_site_html_report(df, report_title, full_period_str):
     # HTML for Monthly Impressions Breakdown table
     monthly_impressions_table_rows = ""
     for index, row in df.sort_values(by='month', ascending=True).iterrows():
-        monthly_total_impressions = row['discover_impressions'] + row['web_impressions']
+        monthly_total_impressions = row['discover_impressions'] + row['web_impressions'] + row['news_impressions']
         monthly_discover_impressions_percent = (row['discover_impressions'] / monthly_total_impressions) if monthly_total_impressions > 0 else 0
         monthly_web_impressions_percent = (row['web_impressions'] / monthly_total_impressions) if monthly_total_impressions > 0 else 0
+        monthly_news_impressions_percent = (row['news_impressions'] / monthly_total_impressions) if monthly_total_impressions > 0 else 0
         monthly_impressions_table_rows += f"""
                 <tr>
                     <td>{row['month']}</td>
@@ -326,6 +345,8 @@ def create_single_site_html_report(df, report_title, full_period_str):
                     <td class="text-end">{monthly_discover_impressions_percent:.2%}</td>
                     <td class="text-end">{row['web_impressions']:,.0f}</td>
                     <td class="text-end">{monthly_web_impressions_percent:.2%}</td>
+                    <td class="text-end">{row['news_impressions']:,.0f}</td>
+                    <td class="text-end">{monthly_news_impressions_percent:.2%}</td>
                     <td class="text-end">{monthly_total_impressions:,.0f}</td>
                 </tr>
         """
@@ -339,6 +360,8 @@ def create_single_site_html_report(df, report_title, full_period_str):
                     <th class="text-end">Discover %</th>
                     <th class="text-end">Web Impressions</th>
                     <th class="text-end">Web %</th>
+                    <th class="text-end">News Impressions</th>
+                    <th class="text-end">News %</th>
                     <th class="text-end">Total</th>
                 </tr>
             </thead>
@@ -517,6 +540,14 @@ def create_single_site_html_report(df, report_title, full_period_str):
                         backgroundColor: 'rgba(153, 102, 255, 0.2)',
                         fill: false,
                         tension: 0.1
+                    }},
+                    {{
+                        label: 'News Clicks',
+                        data: data.map(row => row.news_clicks),
+                        borderColor: 'rgba(255, 159, 64, 1)',
+                        backgroundColor: 'rgba(255, 159, 64, 0.2)',
+                        fill: false,
+                        tension: 0.1
                     }}
                 ]
             }},
@@ -557,6 +588,14 @@ def create_single_site_html_report(df, report_title, full_period_str):
                         data: data.map(row => row.web_impressions),
                         borderColor: 'rgba(201, 203, 207, 1)',
                         backgroundColor: 'rgba(201, 203, 207, 0.2)',
+                        fill: false,
+                        tension: 0.1
+                    }},
+                    {{
+                        label: 'News Impressions',
+                        data: data.map(row => row.news_impressions),
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
                         fill: false,
                         tension: 0.1
                     }}
@@ -601,6 +640,9 @@ def generate_site_sections(df, sorted_sites):
         site_df['web_clicks'] = site_df['web_clicks'].apply(lambda x: f"{x:,.0f}")
         site_df['web_impressions'] = site_df['web_impressions'].apply(lambda x: f"{x:,.0f}")
         site_df['web_ctr'] = site_df['web_ctr'].apply(lambda x: f"{x:.2%}")
+        site_df['news_clicks'] = site_df['news_clicks'].apply(lambda x: f"{x:,.0f}")
+        site_df['news_impressions'] = site_df['news_impressions'].apply(lambda x: f"{x:,.0f}")
+        site_df['news_ctr'] = site_df['news_ctr'].apply(lambda x: f"{x:.2%}")
         site_df['total_clicks'] = site_df['total_clicks'].apply(lambda x: f"{x:,.0f}")
         site_df['total_impressions'] = site_df['total_impressions'].apply(lambda x: f"{x:,.0f}")
         site_df['total_ctr'] = site_df['total_ctr'].apply(lambda x: f"{x:.2%}")
@@ -700,16 +742,18 @@ def main():
                 print(f"  Fetching for {start_of_month.strftime('%Y-%m')}:")
                 discover_data = get_monthly_performance_data(service, site_url, start_date, end_date, 'discover')
                 web_data = get_monthly_performance_data(service, site_url, start_date, end_date, 'web')
+                news_data = get_monthly_performance_data(service, site_url, start_date, end_date, 'news')
 
-                if discover_data == "PERMISSION_DENIED" or web_data == "PERMISSION_DENIED":
+                if discover_data == "PERMISSION_DENIED" or web_data == "PERMISSION_DENIED" or news_data == "PERMISSION_DENIED":
                     break # Stop processing this site if permission is denied for either
 
                 # Initialize data with zeros if None (meaning no data for that search type)
                 discover_data = discover_data if discover_data is not None else {'clicks': 0, 'impressions': 0, 'ctr': 0.0}
                 web_data = web_data if web_data is not None else {'clicks': 0, 'impressions': 0, 'ctr': 0.0}
+                news_data = news_data if news_data is not None else {'clicks': 0, 'impressions': 0, 'ctr': 0.0}
 
-                total_clicks = discover_data['clicks'] + web_data['clicks']
-                total_impressions = discover_data['impressions'] + web_data['impressions']
+                total_clicks = discover_data['clicks'] + web_data['clicks'] + news_data['clicks']
+                total_impressions = discover_data['impressions'] + web_data['impressions'] + news_data['impressions']
                 total_ctr = total_clicks / total_impressions if total_impressions > 0 else 0.0
 
                 all_data.append({
@@ -721,6 +765,9 @@ def main():
                     'web_clicks': web_data['clicks'],
                     'web_impressions': web_data['impressions'],
                     'web_ctr': web_data['ctr'],
+                    'news_clicks': news_data['clicks'],
+                    'news_impressions': news_data['impressions'],
+                    'news_ctr': news_data['ctr'],
                     'total_clicks': total_clicks,
                     'total_impressions': total_impressions,
                     'total_ctr': total_ctr
