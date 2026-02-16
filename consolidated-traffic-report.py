@@ -148,7 +148,7 @@ def create_multi_site_html_report(df, sorted_sites):
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Account-Wide Google Search Performance Report (Discover & Web)</title>
+    <title>Account-Wide Google Search Performance Report (Web, Discover & News)</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body {{ padding-top: 56px; }} /* Offset for fixed header */
@@ -161,7 +161,7 @@ def create_multi_site_html_report(df, sorted_sites):
 <body>
     <header class="navbar navbar-expand-lg navbar-light bg-light border-bottom mb-4 fixed-top">
         <div class="container-fluid">
-            <h1 class="h3 mb-0">Account-Wide Google Search Performance Report (Discover & Web)</h1>
+            <h1 class="h3 mb-0">Account-Wide Google Search Performance Report (Web, Discover & News)</h1>
         </div>
     </header>
     <main class="container-fluid py-4 flex-grow-1">
@@ -199,7 +199,7 @@ def create_single_site_html_report(df, report_title, full_period_str):
     df_table['total_impressions'] = df_table['total_impressions'].apply(lambda x: f"{x:,.0f}")
     df_table['total_ctr'] = df_table['total_ctr'].apply(lambda x: f"{x:.2%}")
 
-    report_body = df_table.to_html(classes="table table-striped table-hover", index=False, border=0)
+    report_body = df_table.sort_values(by='month', ascending=True).to_html(classes="table table-striped table-hover", index=False, border=0)
 
     # Prepare data for the chart (use the original unformatted dataframe for numerical values)
     chart_data = df.sort_values(by='month').to_json(orient='records')
@@ -231,8 +231,8 @@ def create_single_site_html_report(df, report_title, full_period_str):
             <thead class="table-dark">
                 <tr>
                     <th>Metric</th>
-                    <th class="text-end">Discover Clicks</th>
                     <th class="text-end">Web Clicks</th>
+                    <th class="text-end">Discover Clicks</th>
                     <th class="text-end">News Clicks</th>
                     <th class="text-end">Total Clicks</th>
                 </tr>
@@ -240,15 +240,15 @@ def create_single_site_html_report(df, report_title, full_period_str):
             <tbody>
                 <tr>
                     <td>Total</td>
-                    <td class="text-end">{total_discover_clicks:,.0f}</td>
                     <td class="text-end">{total_web_clicks:,.0f}</td>
+                    <td class="text-end">{total_discover_clicks:,.0f}</td>
                     <td class="text-end">{total_news_clicks:,.0f}</td>
                     <td class="text-end">{total_clicks_overall:,.0f}</td>
                 </tr>
                 <tr>
                     <td>Percentage</td>
-                    <td class="text-end">{discover_clicks_percent:.2%}</td>
                     <td class="text-end">{web_clicks_percent:.2%}</td>
+                    <td class="text-end">{discover_clicks_percent:.2%}</td>
                     <td class="text-end">{news_clicks_percent:.2%}</td>
                     <td class="text-end">{(discover_clicks_percent + web_clicks_percent + news_clicks_percent):.2%}</td>
                 </tr>
@@ -264,8 +264,8 @@ def create_single_site_html_report(df, report_title, full_period_str):
             <thead class="table-dark">
                 <tr>
                     <th>Metric</th>
-                    <th class="text-end">Discover Impressions</th>
                     <th class="text-end">Web Impressions</th>
+                    <th class="text-end">Discover Impressions</th>
                     <th class="text-end">News Impressions</th>
                     <th class="text-end">Total Impressions</th>
                 </tr>
@@ -273,15 +273,15 @@ def create_single_site_html_report(df, report_title, full_period_str):
             <tbody>
                 <tr>
                     <td>Total</td>
-                    <td class="text-end">{total_discover_impressions:,.0f}</td>
                     <td class="text-end">{total_web_impressions:,.0f}</td>
+                    <td class="text-end">{total_discover_impressions:,.0f}</td>
                     <td class="text-end">{total_news_impressions:,.0f}</td>
                     <td class="text-end">{total_impressions_overall:,.0f}</td>
                 </tr>
                 <tr>
                     <td>Percentage</td>
-                    <td class="text-end">{discover_impressions_percent:.2%}</td>
                     <td class="text-end">{web_impressions_percent:.2%}</td>
+                    <td class="text-end">{discover_impressions_percent:.2%}</td>
                     <td class="text-end">{news_impressions_percent:.2%}</td>
                     <td class="text-end">{(discover_impressions_percent + web_impressions_percent + news_impressions_percent):.2%}</td>
                 </tr>
@@ -300,10 +300,10 @@ def create_single_site_html_report(df, report_title, full_period_str):
         monthly_clicks_table_rows += f"""
                 <tr>
                     <td>{row['month']}</td>
-                    <td class="text-end">{row['discover_clicks']:,.0f}</td>
-                    <td class="text-end">{monthly_discover_clicks_percent:.2%}</td>
                     <td class="text-end">{row['web_clicks']:,.0f}</td>
                     <td class="text-end">{monthly_web_clicks_percent:.2%}</td>
+                    <td class="text-end">{row['discover_clicks']:,.0f}</td>
+                    <td class="text-end">{monthly_discover_clicks_percent:.2%}</td>
                     <td class="text-end">{row['news_clicks']:,.0f}</td>
                     <td class="text-end">{monthly_news_clicks_percent:.2%}</td>
                     <td class="text-end">{monthly_total_clicks:,.0f}</td>
@@ -315,10 +315,10 @@ def create_single_site_html_report(df, report_title, full_period_str):
             <thead class="table-dark">
                 <tr>
                     <th>Month</th>
-                    <th class="text-end">Discover Clicks</th>
-                    <th class="text-end">Discover %</th>
                     <th class="text-end">Web Clicks</th>
                     <th class="text-end">Web %</th>
+                    <th class="text-end">Discover Clicks</th>
+                    <th class="text-end">Discover %</th>
                     <th class="text-end">News Clicks</th>
                     <th class="text-end">News %</th>
                     <th class="text-end">Total</th>
@@ -341,10 +341,10 @@ def create_single_site_html_report(df, report_title, full_period_str):
         monthly_impressions_table_rows += f"""
                 <tr>
                     <td>{row['month']}</td>
-                    <td class="text-end">{row['discover_impressions']:,.0f}</td>
-                    <td class="text-end">{monthly_discover_impressions_percent:.2%}</td>
                     <td class="text-end">{row['web_impressions']:,.0f}</td>
                     <td class="text-end">{monthly_web_impressions_percent:.2%}</td>
+                    <td class="text-end">{row['discover_impressions']:,.0f}</td>
+                    <td class="text-end">{monthly_discover_impressions_percent:.2%}</td>
                     <td class="text-end">{row['news_impressions']:,.0f}</td>
                     <td class="text-end">{monthly_news_impressions_percent:.2%}</td>
                     <td class="text-end">{monthly_total_impressions:,.0f}</td>
@@ -356,10 +356,10 @@ def create_single_site_html_report(df, report_title, full_period_str):
             <thead class="table-dark">
                 <tr>
                     <th>Month</th>
-                    <th class="text-end">Discover Impressions</th>
-                    <th class="text-end">Discover %</th>
                     <th class="text-end">Web Impressions</th>
                     <th class="text-end">Web %</th>
+                    <th class="text-end">Discover Impressions</th>
+                    <th class="text-end">Discover %</th>
                     <th class="text-end">News Impressions</th>
                     <th class="text-end">News %</th>
                     <th class="text-end">Total</th>
@@ -378,7 +378,7 @@ def create_single_site_html_report(df, report_title, full_period_str):
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Google Search Performance Report (Discover & Web) for {report_title}</title>
+    <title>Google Search Performance Report (Web, Discover & News) for {report_title}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
@@ -392,7 +392,7 @@ def create_single_site_html_report(df, report_title, full_period_str):
 <body>
     <header class="navbar navbar-expand-lg navbar-light bg-light border-bottom mb-4 fixed-top">
         <div class="container-fluid">
-            <h1 class="h3 mb-0">Google Search Performance Report (Discover & Web) for {report_title}</h1>
+            <h1 class="h3 mb-0">Google Search Performance Report (Web, Discover & News) for {report_title}</h1>
         </div>
     </header>
     <main class="container-fluid py-4 flex-grow-1">
@@ -402,11 +402,11 @@ def create_single_site_html_report(df, report_title, full_period_str):
             <div class="card-body"><canvas id="performanceChart"></canvas></div>
         </div>
         <div class="card my-4">
-            <div class="card-header"><h3>Discover Clicks vs. Web Clicks</h3></div>
+            <div class="card-header"><h3>Clicks</h3></div>
             <div class="card-body"><canvas id="clicksChart"></canvas></div>
         </div>
         <div class="card my-4">
-            <div class="card-header"><h3>Discover Impressions vs. Web Impressions</h3></div>
+            <div class="card-header"><h3>Impressions</h3></div>
             <div class="card-body"><canvas id="impressionsChart"></canvas></div>
         </div>
         
@@ -414,7 +414,7 @@ def create_single_site_html_report(df, report_title, full_period_str):
         <div class="row">
             <div class="col-xl-6">
                 <div class="card mb-4">
-                    <div class="card-header"><h3>Discover Clicks vs. Web Clicks</h3></div>
+                    <div class="card-header"><h3>Clicks</h3></div>
                     <div class="card-body">
                         {clicks_summary_table}
                     </div>
@@ -422,7 +422,7 @@ def create_single_site_html_report(df, report_title, full_period_str):
             </div>
             <div class="col-xl-6">
                 <div class="card mb-4">
-                    <div class="card-header"><h3>Discover Impressions vs. Web Impressions</h3></div>
+                    <div class="card-header"><h3>Impressions</h3></div>
                     <div class="card-body">
                         {impressions_summary_table}
                     </div>
@@ -759,12 +759,12 @@ def main():
                 all_data.append({
                     'site_url': site_url,
                     'month': start_of_month.strftime('%Y-%m'),
-                    'discover_clicks': discover_data['clicks'],
-                    'discover_impressions': discover_data['impressions'],
-                    'discover_ctr': discover_data['ctr'],
                     'web_clicks': web_data['clicks'],
                     'web_impressions': web_data['impressions'],
                     'web_ctr': web_data['ctr'],
+                    'discover_clicks': discover_data['clicks'],
+                    'discover_impressions': discover_data['impressions'],
+                    'discover_ctr': discover_data['ctr'],
                     'news_clicks': news_data['clicks'],
                     'news_impressions': news_data['impressions'],
                     'news_ctr': news_data['ctr'],
