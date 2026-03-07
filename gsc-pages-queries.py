@@ -1,13 +1,17 @@
 """
-Exports a report of queries and their corresponding pages, and pages and their
-corresponding queries from a Google Search Console property.
+Exports a report of queries and their corresponding pages from a Google 
+Search Console property.
 
-This script authenticates with the Google Search Console API, fetches data for a
-specified site with 'query' and 'page' dimensions, and then generates an HTML
-report showing the relationships between them.
+This script authenticates with the GSC API, fetches performance data, and then
+generates both a CSV and an interactive HTML report.
+
+By default, to improve performance and readability, the script processes a
+limited subset of the data for both the CSV and HTML outputs, focusing on
+the top 250 pages/queries. These limits can be adjusted using the
+--report-limit and --sub-table-limit flags.
 
 Usage:
-    python gsc-pages-queries.py <site_url> [--start-date <start_date>] [--end-date <end_date>] 
+    python gsc-pages-queries.py <site_url> [--start-date <start_date>] [--end-date <end_date>]
 """
 import os
 import pandas as pd
@@ -607,6 +611,31 @@ def main():
             df = pd.DataFrame(raw_data)
             df[['query', 'page']] = pd.DataFrame(df['keys'].tolist(), index=df.index)
             df.drop(columns=['keys'], inplace=True)
+
+            # Apply the same filtering rules as the HTML report before saving the CSV
+            print(f"\nOriginal dataframe has {len(df)} rows. Applying report limits before saving CSV...")
+            print(f"Limiting to top {args.report_limit} pages/queries and {args.sub_table_limit} sub-items.")
+
+            # Sort by clicks once to prepare for .head() operations
+            df.sort_values(by='clicks', ascending=False, inplace=True)
+
+            # Get top N primary items (pages and queries)
+            top_pages = df.groupby('page')['clicks'].sum().nlargest(args.report_limit).index
+            top_queries = df.groupby('query')['clicks'].sum().nlargest(args.report_limit).index
+
+            # Filter for top pages and their top sub-items (queries)
+            df_from_pages = df[df['page'].isin(top_pages)].groupby('page').head(args.sub_table_limit)
+            
+            # Filter for top queries and their top sub-items (pages)
+            df_from_queries = df[df['query'].isin(top_queries)].groupby('query').head(args.sub_table_limit)
+            
+            # Combine the two filtered dataframes and remove duplicates
+            df_filtered = pd.concat([df_from_pages, df_from_queries]).drop_duplicates().reset_index(drop=True)
+            
+            print(f"Filtered dataframe now has {len(df_filtered)} rows.")
+            
+            # The original df is now the filtered one
+            df = df_filtered
             
             # --- Save CSV Report ---
             try:
