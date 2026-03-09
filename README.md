@@ -153,7 +153,7 @@ A data source is required. You must specify either `<site_url>` (positional argu
 
 *   **Date Range**: Options like `--last-7-days`, `--last-month`, `--last-12-months`, etc., are available when downloading data via `<site_url>`.
 *   **Report Size**:
-    *   `--report-limit <number>`: Sets the maximum number of top-level items (e.g., queries or pages) to include in the HTML report. Defaults to 250.
+    *   `--report-limit <number>`: Sets the maximum number of top-level items (e.g., queries or pages) to include in both the CSV and HTML reports. Defaults to 250.
     *   `--sub-table-limit <number>`: Sets the maximum number of rows to display within each accordion's sub-table. Defaults to 100.
 *   **Brand Analysis**:
     *   The script now automatically loads brand terms from a corresponding file in the `config/` directory (e.g., `config/brand-terms-example.txt` for `example.com`).
@@ -177,7 +177,7 @@ A data source is required. You must specify either `<site_url>` (positional argu
 
 ### Output
 
-Generates a CSV file (if downloading data) and an interactive HTML report.
+Generates a CSV file and an interactive HTML report. By default, both files are generated from a limited subset of the data (top 250 items) to ensure performance. You can adjust these limits using the `--report-limit` and `--sub-table-limit` flags.
 
 By default, the HTML report includes automatic brand-detection and has three tabs for query analysis:
 1.  **Non-Brand Queries**: An accordion list of queries that do not contain brand terms.

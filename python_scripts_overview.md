@@ -12,7 +12,7 @@ Exports all known pages from a GSC property for a given date range into CSV and 
 
 ## gsc-pages-queries.py
 
-Generates a detailed report showing the relationship between queries and the pages they drive traffic to, and vice-versa. The output is a CSV file and an interactive HTML report. The script can either download live data or efficiently generate reports from an existing CSV file, and includes options to limit the report size for better performance.
+Generates a detailed report showing the relationship between queries and the pages they drive traffic to, and vice-versa. By default, it produces a limited-size CSV file and a corresponding interactive HTML report for performance. The script can either download live data or generate reports from an existing CSV file. Report limits can be adjusted with command-line flags.
 
 ## performance-analysis.py
 
