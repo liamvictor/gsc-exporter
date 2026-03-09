@@ -121,7 +121,7 @@ def get_pages_queries_data(service, site_url, start_date, end_date):
     """Fetches pages and queries data from GSC for a given date range."""
     all_data = []
     start_row = 0
-    row_limit = 5000  # A safe limit, can be up to 25000
+    row_limit = 25000 # Increased for better performance
     print(f"Fetching data for {site_url} from {start_date} to {end_date}...")
     while True:
         try:
