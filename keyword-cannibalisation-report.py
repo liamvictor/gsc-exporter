@@ -244,6 +244,7 @@ def create_html_report(site_url, start_date, end_date, report_df, top_100_cannib
         body {{ padding-top: 5rem; }}
         .table-responsive {{ max-height: 500px; }}
         .accordion-button:not(.collapsed) {{ background-color: #e7f1ff; }}
+        .accordion-item:nth-child(even) .accordion-button {{ background-color: #f8f9fa; }}
         .table th:not(:first-child), .table td:not(:first-child) {{ text-align: right; }}
         .table th:first-child, .table td:first-child {{ text-align: left; }}
     </style>
