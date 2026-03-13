@@ -240,7 +240,39 @@ def main():
     print(f"
 Successfully downloaded {len(df)} rows of data.")
     print("Processing for cannibalisation issues...")
-    # Cannibalisation logic will go here
+
+    # --- Cannibalisation Logic ---
+    # 1. Group by query to find page count and total metrics
+    query_summary = df.groupby('query').agg(
+        page_count=('page', 'nunique'),
+        total_clicks=('clicks', 'sum'),
+        total_impressions=('impressions', 'sum')
+    ).reset_index()
+
+    # 2. Filter for keywords with more than one page
+    cannibalised_queries = query_summary[query_summary['page_count'] > 1].copy()
+
+    if cannibalised_queries.empty:
+        print("No keyword cannibalisation issues found in the provided date range.")
+        return
+
+    print(f"Found {len(cannibalised_queries)} keywords with potential cannibalisation issues.")
+
+    # 3. Sort by total impressions to find the top 100 opportunities
+    top_100_cannibalised = cannibalised_queries.sort_values(
+        by='total_impressions', ascending=False
+    ).head(100)
+
+    print(f"Reporting on the top {len(top_100_cannibalised)} cannibalised keywords (by impressions).")
+
+    # 4. Filter the original dataframe to get the full data for the top 100
+    top_queries_list = top_100_cannibalised['query'].tolist()
+    report_df = df[df['query'].isin(top_queries_list)].copy()
+
+    # Sort the report data to match the order of the top_100_cannibalised summary
+    report_df['query'] = pd.Categorical(report_df['query'], categories=top_queries_list, ordered=True)
+    report_df.sort_values(by=['query', 'clicks'], ascending=[True, False], inplace=True)
+    
     # HTML report generation will go here
     # File writing will go here
 
