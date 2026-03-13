@@ -139,9 +139,123 @@ def get_performance_data(service, site_url, start_date, end_date):
             return None
     return all_data
 
-def create_html_report():
-    # Placeholder for HTML report generation
-    pass
+def generate_accordion_html(report_df, top_100_cannibalised):
+    """Generates the Bootstrap accordion HTML for the cannibalisation report."""
+    accordion_id = "cannibalisationAccordion"
+    html_parts = [f'<div class="accordion" id="{accordion_id}">']
+
+    # Use the ordered list of queries from the top_100_cannibalised dataframe
+    # to ensure the report is sorted by impression opportunity.
+    for index, summary_row in top_100_cannibalised.iterrows():
+        query = summary_row['query']
+        total_clicks = summary_row['total_clicks']
+        total_impressions = summary_row['total_impressions']
+
+        # Create a unique ID for each accordion item
+        collapse_id = f"collapse-{index}"
+        header_id = f"header-{index}"
+        
+        # Filter the main dataframe to get all pages for the current query
+        pages_for_query_df = report_df[report_df['query'] == query]
+
+        # Format the numbers in the sub-table for better readability
+        sub_group_html_df = pages_for_query_df.copy()
+        sub_group_html_df['ctr'] = sub_group_html_df['ctr'].apply(lambda x: f"{x:.2%}")
+        sub_group_html_df['position'] = sub_group_html_df['position'].apply(lambda x: f"{x:.2f}")
+        sub_group_html_df['clicks'] = sub_group_html_df['clicks'].apply(lambda x: f"{x:,.0f}")
+        sub_group_html_df['impressions'] = sub_group_html_df['impressions'].apply(lambda x: f"{x:,.0f}")
+
+        sub_table_html = sub_group_html_df[['page', 'clicks', 'impressions', 'ctr', 'position']].to_html(
+            classes="table table-sm table-striped",
+            index=False,
+            border=0
+        )
+
+        accordion_item = f"""
+        <div class="accordion-item">
+            <h2 class="accordion-header" id="{header_id}">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#{collapse_id}">
+                    <div class="d-flex w-100 align-items-center">
+                        <strong>{html.escape(query)}</strong>
+                        <div class="ms-auto">
+                            <span class="badge badge-bg-impressions p-3 me-3">Total Impressions: {total_impressions:,.0f}</span>
+                            <span class="badge badge-bg-clicks p-3 me-3">Total Clicks: {total_clicks:,.0f}</span>
+                        </div>
+                    </div>
+                </button>
+            </h2>
+            <div id="{collapse_id}" class="accordion-collapse collapse" data-bs-parent="#{accordion_id}">
+                <div class="accordion-body">
+                    <div class="table-responsive">
+                        {sub_table_html}
+                    </div>
+                </div>
+            </div>
+        </div>
+        """
+        html_parts.append(accordion_item)
+
+    html_parts.append('</div>')
+    return "".join(html_parts)
+
+def create_html_report(site_url, start_date, end_date, report_df, top_100_cannibalised):
+    """Generates the full HTML report for keyword cannibalisation."""
+
+    report_title = "Keyword Cannibalisation Report"
+    accordion_html = generate_accordion_html(report_df, top_100_cannibalised)
+
+    return f"""
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{report_title}: {site_url}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {{ padding-top: 5rem; }}
+        .table-responsive {{ max-height: 500px; }}
+        .accordion-button:not(.collapsed) {{ background-color: #e7f1ff; }}
+        .table th:not(:first-child), .table td:not(:first-child) {{ text-align: right; }}
+        .table th:first-child, .table td:first-child {{ text-align: left; }}
+        .badge-bg-impressions {{ background-color: #0076AF; color: white; }}
+        .badge-bg-clicks {{ background-color: #712784; color: white; }}
+    </style>
+</head>
+<body>
+    <header class="navbar navbar-expand-lg navbar-light bg-light border-bottom mb-4 fixed-top">
+        <div class="container-fluid">
+            <div class="d-flex align-items-baseline">
+                <h1 class="h3 mb-0 me-4">{report_title}</h1>
+                <span class="text-muted me-4">{site_url}</span>
+                <span class="text-muted">{start_date} to {end_date}</span>
+            </div>
+            <ul class="navbar-nav ms-auto">
+                <li class="nav-item">
+                    <a class="nav-link" href="https://github.com/liamdelahunty/gsc-exporter" target="_blank">GitHub</a>
+                </li>
+            </ul>
+        </div>
+    </header>
+
+    <main class="container-fluid py-4">
+        <div class="alert alert-secondary">
+            <p>This report highlights the top 100 keywords (by total impressions) that have multiple pages ranking for them. This is known as keyword cannibalisation.</p>
+            <p>For each keyword, you can see the total clicks and impressions it receives across all pages. Expanding a keyword shows each individual page and its specific metrics, helping you identify which pages are competing.</p>
+        </div>
+        
+        {accordion_html}
+    </main>
+
+    <footer class="footer mt-auto py-3 bg-light">
+        <div class="container text-center">
+            <span class="text-muted">Report generated on {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}</span>
+        </div>
+    </footer>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
+"""
 
 def main():
     """Main function to run the script."""
@@ -225,7 +339,6 @@ def main():
 
     site_url = args.site_url
 
-    # Placeholder for the rest of the logic
     print(f"Analysing {site_url} from {start_date} to {end_date}")
 
     raw_data = get_performance_data(service, site_url, start_date, end_date)
@@ -242,14 +355,12 @@ Successfully downloaded {len(df)} rows of data.")
     print("Processing for cannibalisation issues...")
 
     # --- Cannibalisation Logic ---
-    # 1. Group by query to find page count and total metrics
     query_summary = df.groupby('query').agg(
         page_count=('page', 'nunique'),
         total_clicks=('clicks', 'sum'),
         total_impressions=('impressions', 'sum')
     ).reset_index()
 
-    # 2. Filter for keywords with more than one page
     cannibalised_queries = query_summary[query_summary['page_count'] > 1].copy()
 
     if cannibalised_queries.empty:
@@ -258,23 +369,42 @@ Successfully downloaded {len(df)} rows of data.")
 
     print(f"Found {len(cannibalised_queries)} keywords with potential cannibalisation issues.")
 
-    # 3. Sort by total impressions to find the top 100 opportunities
     top_100_cannibalised = cannibalised_queries.sort_values(
         by='total_impressions', ascending=False
     ).head(100)
 
     print(f"Reporting on the top {len(top_100_cannibalised)} cannibalised keywords (by impressions).")
 
-    # 4. Filter the original dataframe to get the full data for the top 100
     top_queries_list = top_100_cannibalised['query'].tolist()
     report_df = df[df['query'].isin(top_queries_list)].copy()
 
-    # Sort the report data to match the order of the top_100_cannibalised summary
     report_df['query'] = pd.Categorical(report_df['query'], categories=top_queries_list, ordered=True)
     report_df.sort_values(by=['query', 'clicks'], ascending=[True, False], inplace=True)
+
+    # --- Report Generation and File Output ---
+    if site_url.startswith('sc-domain:'):
+        host_plain = site_url.replace('sc-domain:', '')
+    else:
+        host_plain = urlparse(site_url).netloc
     
-    # HTML report generation will go here
-    # File writing will go here
+    host_dir = host_plain.replace('www.', '')
+    output_dir = os.path.join('output', host_dir)
+    os.makedirs(output_dir, exist_ok=True)
+    host_for_filename = host_dir.replace('.', '-')
+    
+    base_filename = f"keyword-cannibalisation-report-{host_for_filename}-{start_date}-to-{end_date}"
+    html_output_path = os.path.join(output_dir, f"{base_filename}.html")
+
+    print("Generating HTML report...")
+    html_report = create_html_report(site_url, start_date, end_date, report_df, top_100_cannibalised)
+
+    try:
+        with open(html_output_path, 'w', encoding='utf-8') as f:
+            f.write(html_report)
+        print(f"
+Successfully created HTML report at: {html_output_path}")
+    except IOError as e:
+        print(f"Error writing HTML to file: {e}")
 
 if __name__ == '__main__':
     main()
