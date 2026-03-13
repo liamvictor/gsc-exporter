@@ -422,6 +422,7 @@ def main():
     
     base_filename = f"keyword-cannibalisation-report-{host_for_filename}-{start_date}-to-{end_date}"
     html_output_path = os.path.join(output_dir, f"{base_filename}.html")
+    csv_output_path = os.path.join(output_dir, f"{base_filename}.csv")
 
     print("Generating HTML report...")
     html_report = create_html_report(site_url, start_date, end_date, report_df, top_100_cannibalised)
@@ -432,6 +433,17 @@ def main():
         print(f"\nSuccessfully created HTML report at: {html_output_path}")
     except IOError as e:
         print(f"Error writing HTML to file: {e}")
+
+    # --- CSV Generation ---
+    print("Generating CSV report...")
+    csv_df = report_df.copy()
+    csv_df.rename(columns={'query': 'keyword'}, inplace=True)
+    csv_df = csv_df[['keyword', 'page', 'clicks', 'impressions', 'ctr', 'position']]
+    try:
+        csv_df.to_csv(csv_output_path, index=False)
+        print(f"Successfully created CSV report at: {csv_output_path}")
+    except IOError as e:
+        print(f"Error writing CSV to file: {e}")
 
 if __name__ == '__main__':
     main()
