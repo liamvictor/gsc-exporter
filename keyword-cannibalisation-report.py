@@ -142,7 +142,17 @@ def get_performance_data(service, site_url, start_date, end_date):
 def generate_accordion_html(report_df, top_100_cannibalised):
     """Generates the Bootstrap accordion HTML for the cannibalisation report."""
     accordion_id = "cannibalisationAccordion"
-    html_parts = [f'<div class="accordion" id="{accordion_id}">']
+    
+    header = """
+    <div class="row fw-bold border-bottom pb-2 mb-2">
+        <div class="col-md-6">Keyword</div>
+        <div class="col-md-2 text-end">Clicks</div>
+        <div class="col-md-2 text-end">Impressions</div>
+        <div class="col-md-2 text-end">Pages</div>
+    </div>
+    """
+    
+    html_parts = [header, f'<div class="accordion" id="{accordion_id}">']
 
     # Use the ordered list of queries from the top_100_cannibalised dataframe
     # to ensure the report is sorted by impression opportunity.
@@ -150,13 +160,15 @@ def generate_accordion_html(report_df, top_100_cannibalised):
         query = summary_row['query']
         total_clicks = summary_row['total_clicks']
         total_impressions = summary_row['total_impressions']
+        page_count = summary_row['page_count']
 
         # Create a unique ID for each accordion item
         collapse_id = f"collapse-{index}"
         header_id = f"header-{index}"
         
         # Filter the main dataframe to get all pages for the current query
-        pages_for_query_df = report_df[report_df['query'] == query]
+        pages_for_query_df = report_df[report_df['query'] == query].copy()
+        pages_for_query_df.sort_values(by=['clicks', 'impressions'], ascending=[False, False], inplace=True)
 
         # Format the numbers in the sub-table for better readability
         sub_group_html_df = pages_for_query_df.copy()
@@ -175,12 +187,11 @@ def generate_accordion_html(report_df, top_100_cannibalised):
         <div class="accordion-item">
             <h2 class="accordion-header" id="{header_id}">
                 <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#{collapse_id}">
-                    <div class="d-flex w-100 align-items-center">
-                        <strong>{html.escape(query)}</strong>
-                        <div class="ms-auto">
-                            <span class="badge badge-bg-impressions p-3 me-3">Total Impressions: {total_impressions:,.0f}</span>
-                            <span class="badge badge-bg-clicks p-3 me-3">Total Clicks: {total_clicks:,.0f}</span>
-                        </div>
+                    <div class="row w-100 align-items-center">
+                        <div class="col-md-6 text-start"><strong>{html.escape(query)}</strong></div>
+                        <div class="col-md-2 text-end">{total_clicks:,.0f}</div>
+                        <div class="col-md-2 text-end">{total_impressions:,.0f}</div>
+                        <div class="col-md-2 text-end">{page_count}</div>
                     </div>
                 </button>
             </h2>
@@ -218,8 +229,6 @@ def create_html_report(site_url, start_date, end_date, report_df, top_100_cannib
         .accordion-button:not(.collapsed) {{ background-color: #e7f1ff; }}
         .table th:not(:first-child), .table td:not(:first-child) {{ text-align: right; }}
         .table th:first-child, .table td:first-child {{ text-align: left; }}
-        .badge-bg-impressions {{ background-color: #0076AF; color: white; }}
-        .badge-bg-clicks {{ background-color: #712784; color: white; }}
     </style>
 </head>
 <body>
@@ -239,16 +248,12 @@ def create_html_report(site_url, start_date, end_date, report_df, top_100_cannib
     </header>
 
     <main class="container-fluid py-4">
-        <div class="alert alert-secondary">
-            <p>This report highlights the top 100 keywords (by total impressions) that have multiple pages ranking for them. This is known as keyword cannibalisation.</p>
-            <p>For each keyword, you can see the total clicks and impressions it receives across all pages. Expanding a keyword shows each individual page and its specific metrics, helping you identify which pages are competing.</p>
-        </div>
-        
         {accordion_html}
     </main>
 
     <footer class="footer mt-auto py-3 bg-light">
         <div class="container text-center">
+            <p>This report highlights the top 100 keywords (by total impressions) that have multiple pages ranking for them.</p>
             <span class="text-muted">Report generated on {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}</span>
         </div>
     </footer>
