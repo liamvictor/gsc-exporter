@@ -144,11 +144,16 @@ def select_report():
         '9': {'name': 'Query Segmentation Report', 'file': 'query-segmentation-report.py'},
         '10': {'name': 'Keyword Cannibalisation Report', 'file': 'keyword-cannibalisation-report.py'},
         '11': {'name': 'Page Performance Over Time', 'file': 'page-performance-over-time.py'},
-        '12': {'name': 'Monthly Summary Report', 'file': 'monthly-summary-report.py'},
-        '13': {'name': 'Export All Pages', 'file': 'gsc_pages_exporter.py'},
-        '14': {'name': 'URL Inspection Report', 'file': 'url-inspection-report.py'},
-        '15': {'name': 'Generate GSC Wrapped', 'file': 'generate_gsc_wrapped.py'},
-        '16': {'name': 'Monthly Search Type Performance Report', 'file': 'monthly-search-type-performance-report.py'},
+        '12': {'name': 'Single Page Performance', 'file': 'page-performance-single-page.py'},
+        '13': {'name': 'Monthly Summary Report', 'file': 'monthly-summary-report.py'},
+        '14': {'name': 'Historical Summary Report', 'file': 'historical-summary-report.py'},
+        '15': {'name': 'Consolidated Traffic Report', 'file': 'consolidated-traffic-report.py'},
+        '16': {'name': 'Image Performance Report', 'file': 'image-performance-report.py'},
+        '17': {'name': 'Monthly Search Type Performance', 'file': 'monthly-search-type-performance-report.py'},
+        '18': {'name': 'Search Type Performance Report', 'file': 'search-type-performance-report.py'},
+        '19': {'name': 'URL Inspection Report', 'file': 'url-inspection-report.py'},
+        '20': {'name': 'Export All Pages', 'file': 'gsc_pages_exporter.py'},
+        '21': {'name': 'Generate GSC Wrapped', 'file': 'generate_gsc_wrapped.py'},
     }
     print("\nAvailable Reports:")
     for key in sorted(reports.keys(), key=int):
