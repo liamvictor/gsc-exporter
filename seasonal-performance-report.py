@@ -280,8 +280,8 @@ def main():
         merged_df = merged_df.sort_values(by='clicks_diff', ascending=False)
 
     report_title = f"Seasonal Performance Report: {target_dt.strftime('%B')} ({args.site_url})"
-    csv_report_path = os.path.join(output_dir, f'seasonal-report-{args.month}.csv')
-    html_report_path = os.path.join(output_dir, f'seasonal-report-{args.month}.html')
+    csv_report_path = os.path.join(output_dir, f'seasonal-performance-report-{args.month}.csv')
+    html_report_path = os.path.join(output_dir, f'seasonal-performance-report-{args.month}.html')
     
     merged_df.to_csv(csv_report_path, index=False)
     print(f"Exported CSV to {csv_report_path}")
