@@ -14,6 +14,8 @@ Example:
 import os
 import pandas as pd
 import numpy as np
+import time
+import socket
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
@@ -26,6 +28,9 @@ from urllib.parse import urlparse
 import argparse
 import json
 import glob
+
+# Set global timeout for API requests
+socket.setdefaulttimeout(300)
 
 # --- Configuration ---
 SCOPES = ['https://www.googleapis.com/auth/webmasters.readonly']
@@ -81,33 +86,48 @@ def get_latest_available_gsc_date(service, site_url):
     return current_date
 
 def fetch_query_data(service, site_url, start_date, end_date):
-    """Fetches query-level performance data from GSC."""
+    """Fetches query-level performance data from GSC with retries."""
     all_queries = []
     start_row = 0
-    row_limit = 25000
+    row_limit = 10000 # Reduced from 25000 for better stability
     
     print(f"    - Fetching data for {start_date} to {end_date}...")
     
     while True:
-        try:
-            request = {
-                'startDate': start_date,
-                'endDate': end_date,
-                'dimensions': ['query'],
-                'rowLimit': row_limit,
-                'startRow': start_row
-            }
-            response = service.searchanalytics().query(siteUrl=site_url, body=request).execute()
-            
-            if 'rows' in response:
-                all_queries.extend(response['rows'])
-                if len(response['rows']) < row_limit:
+        success = False
+        for attempt in range(3):
+            try:
+                request = {
+                    'startDate': start_date,
+                    'endDate': end_date,
+                    'dimensions': ['query'],
+                    'rowLimit': row_limit,
+                    'startRow': start_row
+                }
+                response = service.searchanalytics().query(siteUrl=site_url, body=request).execute()
+                
+                if 'rows' in response:
+                    all_queries.extend(response['rows'])
+                    if len(response['rows']) < row_limit:
+                        break
+                    start_row += row_limit
+                else:
                     break
-                start_row += row_limit
-            else:
-                break
-        except HttpError as e:
-            print(f"      - Error: {e}")
+                success = True
+                break # Break attempt loop
+            except (socket.timeout, TimeoutError):
+                print(f"      - Timeout on attempt {attempt + 1}, retrying...")
+                time.sleep(5 * (attempt + 1))
+            except HttpError as e:
+                print(f"      - Error: {e}")
+                break # Break attempt loop on other errors
+        
+        if not success and attempt == 2:
+            print(f"      - Failed to fetch data after 3 attempts.")
+            break
+            
+        # Check if we should continue outer loop
+        if 'rows' not in response or len(response['rows']) < row_limit:
             break
             
     if not all_queries:

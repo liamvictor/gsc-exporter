@@ -12,6 +12,8 @@ Example:
 """
 import os
 import pandas as pd
+import time
+import socket
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
@@ -24,6 +26,9 @@ from urllib.parse import urlparse
 import argparse
 import json
 import glob
+
+# Set global timeout for API requests
+socket.setdefaulttimeout(300)
 
 # --- Configuration ---
 SCOPES = ['https://www.googleapis.com/auth/webmasters.readonly']
@@ -79,33 +84,47 @@ def get_latest_available_gsc_date(service, site_url):
     return current_date
 
 def fetch_page_data(service, site_url, start_date, end_date):
-    """Fetches page-level performance data from GSC."""
+    """Fetches page-level performance data from GSC with retries."""
     all_pages = []
     start_row = 0
-    row_limit = 25000
+    row_limit = 10000
     
     print(f"  - Fetching page data from {start_date} to {end_date}...")
     
     while True:
-        try:
-            request = {
-                'startDate': start_date,
-                'endDate': end_date,
-                'dimensions': ['page'],
-                'rowLimit': row_limit,
-                'startRow': start_row
-            }
-            response = service.searchanalytics().query(siteUrl=site_url, body=request).execute()
-            
-            if 'rows' in response:
-                all_pages.extend(response['rows'])
-                if len(response['rows']) < row_limit:
+        success = False
+        for attempt in range(3):
+            try:
+                request = {
+                    'startDate': start_date,
+                    'endDate': end_date,
+                    'dimensions': ['page'],
+                    'rowLimit': row_limit,
+                    'startRow': start_row
+                }
+                response = service.searchanalytics().query(siteUrl=site_url, body=request).execute()
+                
+                if 'rows' in response:
+                    all_pages.extend(response['rows'])
+                    if len(response['rows']) < row_limit:
+                        break
+                    start_row += row_limit
+                else:
                     break
-                start_row += row_limit
-            else:
+                success = True
+                break # Break attempt loop
+            except (socket.timeout, TimeoutError):
+                print(f"    - Timeout on attempt {attempt + 1}, retrying...")
+                time.sleep(5 * (attempt + 1))
+            except HttpError as e:
+                print(f"    - Error fetching data: {e}")
                 break
-        except HttpError as e:
-            print(f"    - Error fetching data: {e}")
+        
+        if not success and attempt == 2:
+            print(f"    - Failed to fetch data after 3 attempts.")
+            break
+            
+        if 'rows' not in response or len(response['rows']) < row_limit:
             break
             
     if not all_pages:
@@ -207,21 +226,12 @@ def main():
             df_year = pd.read_csv(csv_cache_path)
         else:
             # 2. Check for general monthly report cache in the host directory
-            # We look for files matching the pattern monthly-summary-report-*-{start_date}-to-{end_date}.csv
             host_root_dir = os.path.join('output', host_dir)
-            search_pattern = os.path.join(host_root_dir, f"*-{start_date}-to-{end_date}.csv")
-            potential_caches = glob.glob(search_pattern)
-            
-            if potential_caches:
-                print(f"Found existing monthly report for {year_str}: {potential_caches[0]}")
-                # Note: Monthly summary reports are at site-level, not page-level.
-                # If we need page-level data, we specifically need page-level caches.
-                # Let's check for page-level reports instead.
-                page_report_pattern = os.path.join(host_root_dir, f"page-level-report-*-{start_date}-to-{end_date}.csv")
-                potential_page_caches = glob.glob(page_report_pattern)
-                if potential_page_caches:
-                    print(f"Found existing page-level report for {year_str}: {potential_page_caches[0]}")
-                    df_year = pd.read_csv(potential_page_caches[0])
+            page_report_pattern = os.path.join(host_root_dir, f"page-level-report-*-{start_date}-to-{end_date}.csv")
+            potential_page_caches = glob.glob(page_report_pattern)
+            if potential_page_caches:
+                print(f"Found existing page-level report for {year_str}: {potential_page_caches[0]}")
+                df_year = pd.read_csv(potential_page_caches[0])
             
             # 3. Fetch from GSC if within 16 months and not found in cache
             if df_year is None:
@@ -235,11 +245,9 @@ def main():
         
         if df_year is not None:
             years_list.append(year_dt.year)
-            # Ensure we only have relevant columns and they are named correctly
             if 'page' not in df_year.columns and 'Page' in df_year.columns:
                 df_year = df_year.rename(columns={'Page': 'page'})
             
-            # Keep only the columns we need for the merge
             cols_to_keep = ['page', 'clicks', 'impressions', 'ctr', 'position']
             df_year = df_year[[c for c in cols_to_keep if c in df_year.columns]]
             
@@ -255,24 +263,20 @@ def main():
         print("No data found for any of the years.")
         return
 
-    # Merge all years
     merged_df = all_years_data[0]
     for df_next in all_years_data[1:]:
         merged_df = pd.merge(merged_df, df_next, on='page', how='outer')
 
-    # Fill NaNs with 0 for clicks/impressions
     for year in years_list:
         merged_df[f'clicks_{year}'] = merged_df[f'clicks_{year}'].fillna(0).astype(int)
         merged_df[f'impressions_{year}'] = merged_df[f'impressions_{year}'].fillna(0).astype(int)
 
-    # Calculate growth (current vs last year)
     if len(years_list) >= 2:
         curr_year = years_list[0]
         prev_year = years_list[1]
         merged_df['clicks_diff'] = merged_df[f'clicks_{curr_year}'] - merged_df[f'clicks_{prev_year}']
         merged_df = merged_df.sort_values(by='clicks_diff', ascending=False)
 
-    # Format for report
     report_title = f"Seasonal Performance Report: {target_dt.strftime('%B')} ({args.site_url})"
     csv_report_path = os.path.join(output_dir, f'seasonal-report-{args.month}.csv')
     html_report_path = os.path.join(output_dir, f'seasonal-report-{args.month}.html')
