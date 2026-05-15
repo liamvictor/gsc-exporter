@@ -215,7 +215,7 @@ def main():
         df_month = None
         if os.path.exists(cache_file):
             df_month = pd.read_csv(cache_file)
-        elif month_dt.date() >= sixteen_months_ago:
+        elif month_dt >= sixteen_months_ago:
             print(f"Fetching data for {month_str}...")
             start_date, end_date = get_month_range(month_str)
             df_month = fetch_page_data(service, args.site_url, start_date, end_date)
