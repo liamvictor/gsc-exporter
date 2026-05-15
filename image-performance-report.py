@@ -23,6 +23,10 @@ from urllib.parse import urlparse
 import argparse
 import json
 import time
+import socket
+
+# Set global timeout for API requests
+socket.setdefaulttimeout(300)
 
 # --- Configuration ---
 SCOPES = ['https://www.googleapis.com/auth/webmasters.readonly']
@@ -76,35 +80,50 @@ def get_latest_available_gsc_date(service, site_url):
     return current_date - timedelta(days=3)
 
 def fetch_gsc_data(service, site_url, start_date, end_date, dimensions, row_limit=5000):
-    """Fetches performance data for Image Search with pagination."""
+    """Fetches performance data for Image Search with pagination and retries."""
     all_data = []
     start_row = 0
     
     print(f"Fetching image data for dimensions: {', '.join(dimensions)}...")
     
     while True:
-        try:
-            request = {
-                'startDate': start_date,
-                'endDate': end_date,
-                'dimensions': dimensions,
-                'searchType': 'image',
-                'rowLimit': row_limit,
-                'startRow': start_row
-            }
-            response = service.searchanalytics().query(siteUrl=site_url, body=request).execute()
-            
-            if 'rows' in response:
-                rows = response['rows']
-                all_data.extend(rows)
-                if len(rows) < row_limit:
+        success = False
+        for attempt in range(3):
+            try:
+                request = {
+                    'startDate': start_date,
+                    'endDate': end_date,
+                    'dimensions': dimensions,
+                    'searchType': 'image',
+                    'rowLimit': row_limit,
+                    'startRow': start_row
+                }
+                response = service.searchanalytics().query(siteUrl=site_url, body=request).execute()
+                
+                if 'rows' in response:
+                    rows = response['rows']
+                    all_data.extend(rows)
+                    if len(rows) < row_limit:
+                        break
+                    start_row += row_limit
+                    print(f"  - Retrieved {len(all_data)} rows...")
+                else:
                     break
-                start_row += row_limit
-                print(f"  - Retrieved {len(all_data)} rows...")
-            else:
-                break
-        except HttpError as e:
-            print(f"An HTTP error occurred: {e}")
+                success = True
+                break # Break attempt loop
+            except (socket.timeout, TimeoutError):
+                print(f"  - Timeout on attempt {attempt + 1} for {dimensions}, retrying...")
+                time.sleep(5 * (attempt + 1))
+            except HttpError as e:
+                print(f"  - An HTTP error occurred: {e}")
+                break # Break attempt loop on other errors
+        
+        if not success and attempt == 2:
+            print(f"  - Failed to fetch data for {dimensions} after 3 attempts.")
+            break
+            
+        # Check if we should continue outer loop
+        if 'rows' not in response or len(response['rows']) < row_limit:
             break
             
     if not all_data:
@@ -350,8 +369,8 @@ def main():
     # 2. Fetch Top Pages
     df_pages = fetch_gsc_data(service, site_url, start_str, end_str, ['page'])
 
-    # 3. Fetch Query & Page Matrix (Relationship)
-    df_matrix = fetch_gsc_data(service, site_url, start_str, end_str, ['query', 'page'])
+    # 3. Fetch Query & Page Matrix (Relationship) - Lower row limit for matrix as it's heavy
+    df_matrix = fetch_gsc_data(service, site_url, start_str, end_str, ['query', 'page'], row_limit=2500)
     
     # 4. Fetch Device/Country Breakdown
     df_device = fetch_gsc_data(service, site_url, start_str, end_str, ['device'])
