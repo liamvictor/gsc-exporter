@@ -154,6 +154,9 @@ def select_report():
         '19': {'name': 'URL Inspection Report', 'file': 'url-inspection-report.py'},
         '20': {'name': 'Export All Pages', 'file': 'gsc_pages_exporter.py'},
         '21': {'name': 'Generate GSC Wrapped', 'file': 'generate_gsc_wrapped.py'},
+        '22': {'name': 'Seasonal Performance (Year-over-Year)', 'file': 'seasonal-performance-report.py'},
+        '23': {'name': 'Seasonal Page Spikes (Z-Score)', 'file': 'seasonal-page-spike-report.py'},
+        '24': {'name': 'Seasonal Query Spikes (Z-Score)', 'file': 'seasonal-query-spike-report.py'},
     }
     print("\nAvailable Reports:")
     for key in sorted(reports.keys(), key=int):
