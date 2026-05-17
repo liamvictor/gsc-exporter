@@ -302,6 +302,12 @@ def generate_html_report(df, site_url, html_output_path):
 
     # Monthly Breakdown
     df_fmt = df.copy()
+    # Ensure all search type columns exist for formatting
+    for col in ['web_clicks', 'discover_clicks', 'news_clicks', 'total_clicks', 
+                'web_impressions', 'discover_impressions', 'news_impressions', 'total_impressions']:
+        if col not in df_fmt.columns:
+            df_fmt[col] = 0
+
     for col in df_fmt.columns:
         if 'clicks' in col or 'impressions' in col:
             df_fmt[col] = df_fmt[col].apply(lambda x: f"{x:,.0f}")
