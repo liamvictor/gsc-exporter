@@ -22,4 +22,11 @@
 - Updated `interactive-runner.py`:
     - Now uses `core.client` for all authentication.
     - Points to new locations in `reports/` for pilot scripts.
+- Updated `run-monthly-reports.py`:
+    - Now supports modular report paths.
+    - Sets `PYTHONPATH` dynamically to ensure `core` library is discoverable.
+- **Automated Testing**:
+    - Initialised `tests/` directory.
+    - Implemented unit tests for `core/naming.py` and `core/cache.py` using `pytest`.
+    - Verified 100% pass rate for naming logic and monthly data aggregation.
 - Verified that modular reports follow the new naming convention (dot-notation for directories, hyphens for filenames).
