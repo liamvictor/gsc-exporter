@@ -100,7 +100,7 @@ def select_report():
         '12': {'name': 'Single Page Performance', 'file': 'page-performance-single-page.py'},
         '13': {'name': 'Monthly Summary Report', 'file': 'monthly-summary-report.py'},
         '14': {'name': 'Historical Summary Report', 'file': 'historical-summary-report.py'},
-        '15': {'name': 'Consolidated Traffic Report', 'file': 'consolidated-traffic-report.py'},
+        '15': {'name': 'Consolidated Traffic Report', 'file': 'reports/consolidated-traffic-report.py'},
         '16': {'name': 'Image Performance Report', 'file': 'image-performance-report.py'},
         '17': {'name': 'Monthly Search Type Performance', 'file': 'monthly-search-type-performance-report.py'},
         '18': {'name': 'Search Type Performance Report', 'file': 'search-type-performance-report.py'},
