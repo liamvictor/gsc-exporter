@@ -95,7 +95,7 @@ def select_report():
         '7': {'name': 'Queries & Pages Summary', 'file': 'queries-pages-analysis.py'},
         '8': {'name': 'Query Position Analysis', 'file': 'query-position-analysis.py'},
         '9': {'name': 'Query Segmentation Report', 'file': 'query-segmentation-report.py'},
-        '10': {'name': 'Keyword Cannibalisation Report', 'file': 'keyword-cannibalisation-report.py'},
+        '10': {'name': 'Keyword Cannibalisation Report', 'file': 'reports/keyword-cannibalisation-report.py'},
         '11': {'name': 'Page Performance Over Time', 'file': 'page-performance-over-time.py'},
         '12': {'name': 'Single Page Performance', 'file': 'page-performance-single-page.py'},
         '13': {'name': 'Monthly Summary Report', 'file': 'monthly-summary-report.py'},
