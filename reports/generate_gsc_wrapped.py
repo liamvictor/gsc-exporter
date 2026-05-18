@@ -3,6 +3,8 @@ Generates a "Google Organic Wrapped"-style report for Google Search Console data
 Refactored for modular GSC Exporter.
 """
 import os
+import sys
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import pandas as pd
 import re
 from datetime import datetime, date, timedelta

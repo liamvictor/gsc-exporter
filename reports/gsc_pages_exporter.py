@@ -3,6 +3,8 @@ Exports all pages from a Google Search Console property to a CSV and an HTML fil
 Refactored for modular GSC Exporter.
 """
 import os
+import sys
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import pandas as pd
 import math
 from datetime import datetime, date, timedelta

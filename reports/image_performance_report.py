@@ -3,6 +3,8 @@ Generates a specialized success report for Google Image Search performance.
 Refactored for modular GSC Exporter.
 """
 import os
+import sys
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import pandas as pd
 import json
 from datetime import datetime, date, timedelta

@@ -6,7 +6,10 @@ from core.naming import get_output_dir
 
 # Import the run_report functions from migrated reports
 from reports.page_level_report import run_report as run_page_level
-from reports.seasonal_page_spike_report import run_report as run_seasonal_spike
+from reports.seasonal_performance_report import run_report as run_seasonal_performance
+from reports.seasonal_query_spike_report import run_report as run_seasonal_spike_query
+from reports.snapshot_report import run_report as run_snapshot
+from reports.url_inspection_report import run_report as run_url_inspection
 from reports.consolidated_traffic_report import run_report as run_consolidated
 from reports.discover_key_performance_metrics import run_report as run_discover
 from reports.generate_gsc_wrapped import run_report as run_wrapped
@@ -15,6 +18,7 @@ from reports.gsc_pages_queries import run_report as run_pages_queries
 from reports.queries_pages_analysis import run_report as run_queries_pages_analysis
 from reports.query_position_analysis import run_report as run_query_position_analysis
 from reports.query_segmentation_report import run_report as run_query_segmentation
+from reports.search_type_performance import run_report as run_search_type_performance
 from reports.historical_summary_report import run_report as run_historical
 from reports.image_performance_report import run_report as run_image
 from reports.key_performance_metrics import run_report as run_key_metrics
@@ -58,9 +62,24 @@ def test_page_level_report(mock_service, mock_fetch):
     # Use explicit dates to avoid "No page data found" due to date range logic
     run_page_level(mock_service, site, '2024-01-01', '2024-01-31')
 
-def test_seasonal_spike_report(mock_service, mock_fetch):
+def test_seasonal_performance_report(mock_service, mock_fetch):
     site = 'https://www.example.com/'
-    run_seasonal_spike(mock_service, site)
+    run_seasonal_performance(mock_service, site, month='2024-01', years=1)
+
+def test_seasonal_spike_query_report(mock_service, mock_fetch):
+    site = 'https://www.example.com/'
+    run_seasonal_spike_query(mock_service, site, months=1)
+
+def test_snapshot_report(mock_service, mock_fetch):
+    site = 'https://www.example.com/'
+    run_snapshot(mock_service, site, '2024-01-01', '2024-01-31')
+
+def test_url_inspection_report(mock_service):
+    # Mock URL inspection response
+    mock_service.urlInspection().index().inspect().execute.return_value = {
+        'inspectionResult': {'indexStatusResult': {'verdict': 'PASS'}}
+    }
+    run_url_inspection(mock_service, ['https://www.example.com/'])
 
 def test_consolidated_traffic_report(mock_service, mock_fetch):
     site = 'https://www.example.com/'

@@ -3,6 +3,9 @@ Generates a page-level report with key performance metrics and unique query coun
 Adapted for the modular GSC Exporter.
 """
 import os
+import sys
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 import pandas as pd
 from datetime import datetime
 from core.naming import get_output_dir, get_filename_slug

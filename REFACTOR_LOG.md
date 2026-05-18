@@ -40,7 +40,10 @@
     - `historical_summary_report.py`
     - `image_performance_report.py`
     - `key_performance_metrics.py`
-    - `keyword_cannibalisation_report.py`
+    - `seasonal-performance-report.py`: Refactored to use `core.cache` and `core.naming`.
+- `seasonal-query-spike-report.py`: Refactored to use `core.cache` and `core.naming`.
+- `snapshot-report.py`: Refactored to use `core.cache` and `core.naming`.
+- `url-inspection-report.py`: Refactored to use `core.naming`.
 - **Standardisation**: Renamed all migrated report files to use underscores (e.g., `page_level_report.py`) to satisfy Python's module import requirements for automated testing.
 - **Integration Testing**:
     - Implemented `tests/test_reports.py` using `pytest` and `pytest-mock`.
