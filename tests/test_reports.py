@@ -14,6 +14,7 @@ from reports.gsc_pages_exporter import run_report as run_exporter
 from reports.gsc_pages_queries import run_report as run_pages_queries
 from reports.queries_pages_analysis import run_report as run_queries_pages_analysis
 from reports.query_position_analysis import run_report as run_query_position_analysis
+from reports.query_segmentation_report import run_report as run_query_segmentation
 from reports.historical_summary_report import run_report as run_historical
 from reports.image_performance_report import run_report as run_image
 from reports.key_performance_metrics import run_report as run_key_metrics
@@ -88,6 +89,10 @@ def test_queries_pages_analysis_report(mock_service, mock_fetch):
 def test_query_position_analysis_report(mock_service, mock_fetch):
     site = 'https://www.example.com/'
     run_query_position_analysis(mock_service, site, months=1)
+
+def test_query_segmentation_report(mock_service, mock_fetch):
+    site = 'https://www.example.com/'
+    run_query_segmentation(mock_service, site, '2024-01-01', '2024-01-31')
 
 def test_historical_summary_report(mocker):
     site = 'https://www.example.com/'
