@@ -1,3 +1,16 @@
+"""
+A script for performance analysis of Google Search Console data.
+
+This script fetches performance data (clicks, impressions, CTR, position) for two 
+different time periods, compares them, and generates a report highlighting best/worst 
+performing pages and pages with low CTR.
+
+Usage:
+    python performance-analysis.py <site_url> [comparison_flag] [filter_flags]
+
+Examples:
+    python performance-analysis.py https://www.example.com --last-month
+"""
 import os
 import sys
 import pandas as pd
@@ -176,11 +189,11 @@ if __name__ == '__main__':
     if args.last_month:
         today = date.today()
         # Current = Last month
-        end_date_dt = today.replace(day=1) - relativedelta(days=1)
+        end_date_dt = today.replace(day=1) - timedelta(days=1)
         start_date_dt = end_date_dt.replace(day=1)
         
         # Previous = Month before last month
-        comparison_end_date_dt = start_date_dt - relativedelta(days=1)
+        comparison_end_date_dt = start_date_dt - timedelta(days=1)
         comparison_start_date_dt = comparison_end_date_dt.replace(day=1)
         
         start_date = start_date_dt.strftime('%Y-%m-%d')
