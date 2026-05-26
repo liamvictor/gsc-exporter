@@ -195,11 +195,12 @@ def create_html_report(data_df, site_url, start_date, end_date, report_limit, su
     <style>
         body {{ padding: 2rem; background-color: #f8f9fa; }}
         h1 {{ border-bottom: 2px solid #dee2e6; padding-bottom: .5rem; }}
-        .table td {{ word-wrap: break-word; max-width: 500px; }}
-        .text-break {{ word-break: break-all !important; }}
+        .table td { word-wrap: break-word; max-width: 500px; text-align: left !important; }
+        .table th { text-align: left !important; }
+        .text-break { word-break: break-all !important; }
         .accordion-button:not(.collapsed) { background-color: #e7f1ff; }
-        table th, table td { text-align: left !important; }
         </style>
+
 
 </head>
 <body>
