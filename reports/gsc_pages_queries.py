@@ -72,6 +72,7 @@ def create_html_report(data_df, site_url, start_date, end_date, report_limit, su
     
     has_brands = brand_terms is not None and len(brand_terms) > 0
     
+    brand_summary_html = ""
     brand_details_html = f"""
     <div class="alert alert-secondary">
         <strong>Report Details:</strong>
@@ -92,11 +93,53 @@ def create_html_report(data_df, site_url, start_date, end_date, report_limit, su
         The full, unfiltered data is available in the accompanying CSV file. You can adjust these limits using the <code>--report-limit</code> and <code>--sub-table-limit</code> flags.
     </div>
     """
-    
+
     if has_brands:
         data_df['is_brand'] = data_df['query'].apply(lambda x: classify_query(x, brand_terms))
         brand_df = data_df[data_df['is_brand']].copy()
         non_brand_df = data_df[~data_df['is_brand']].copy()
+        
+        brand_summary_html = f"""
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">Brand vs. Non-Brand Performance</div>
+            <div class="card-body">
+                <table class="table table-sm table-bordered mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Segment</th>
+                            <th class="text-end">Clicks</th>
+                            <th class="text-end">Impressions</th>
+                            <th class="text-end">CTR</th>
+                            <th class="text-end">Unique Queries</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Non-Brand</strong></td>
+                            <td class="text-end">{non_brand_df['clicks'].sum():,}</td>
+                            <td class="text-end">{non_brand_df['impressions'].sum():,}</td>
+                            <td class="text-end">{non_brand_df['clicks'].sum() / non_brand_df['impressions'].sum():.2% if non_brand_df['impressions'].sum() > 0 else '0.00%'}</td>
+                            <td class="text-end">{non_brand_df['query'].nunique():,}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Brand</strong></td>
+                            <td class="text-end">{brand_df['clicks'].sum():,}</td>
+                            <td class="text-end">{brand_df['impressions'].sum():,}</td>
+                            <td class="text-end">{brand_df['clicks'].sum() / brand_df['impressions'].sum():.2% if brand_df['impressions'].sum() > 0 else '0.00%'}</td>
+                            <td class="text-end">{brand_df['query'].nunique():,}</td>
+                        </tr>
+                        <tr class="table-group-divider fw-bold">
+                            <td>Total</td>
+                            <td class="text-end">{data_df['clicks'].sum():,}</td>
+                            <td class="text-end">{data_df['impressions'].sum():,}</td>
+                            <td class="text-end">{data_df['clicks'].sum() / data_df['impressions'].sum():.2% if data_df['impressions'].sum() > 0 else '0.00%'}</td>
+                            <td class="text-end">{data_df['query'].nunique():,}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        """
         
         brand_tab_html = generate_accordion_html(brand_df, 'query', 'page', report_limit, sub_table_limit, "-brand")
         non_brand_tab_html = generate_accordion_html(non_brand_df, 'query', 'page', report_limit, sub_table_limit, "-non-brand")
@@ -157,6 +200,7 @@ def create_html_report(data_df, site_url, start_date, end_date, report_limit, su
         <h1>Google Organic Pages & Queries Report</h1>
         <p class="lead">{site_url} ({start_date} to {end_date})</p>
 
+        {brand_summary_html}
         {brand_details_html}
 
         <ul class="nav nav-tabs" id="myTab" role="tablist">
