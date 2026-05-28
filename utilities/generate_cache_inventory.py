@@ -87,7 +87,7 @@ def generate_inventory(sites_file_path):
     
     inventory = {site: {} for site in all_sites}
     
-    for json_file in cache_dir.glob("*.json"):
+    for json_file in cache_dir.glob("**/*.json"):
         with open(json_file, 'r') as f:
             try:
                 data = json.load(f)

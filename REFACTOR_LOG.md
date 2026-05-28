@@ -72,3 +72,17 @@
 - **Cleanup**:
     - Final purge of temporary test scripts and root-level artifacts.
     - Verified `PYTHONPATH` handling in all primary runners.
+
+## 2026-05-28: State of the Project & Standardisation Roadmap
+- **Investigation**: Conducted a comprehensive audit of the refactored suite.
+- **Findings**:
+    - **Argument Incompatibility**: Many reports lack support for standard flags (`--last-month`, `--start-date`, `--end-date`), causing crashes in batch runs.
+    - **Inconsistent Definitions**: The meaning of `--last-month` varies between a single month snapshot and a 16-month trend.
+    - **Runner Desynchronisation**: `interactive-runner.py` and `run-monthly-reports.py` use outdated lists of "supported" reports and flags.
+    - **Documentation Drift**: `INSTRUCTIONS.md` and other resources still reference old root-level scripts.
+- **Roadmap for Phase 5 (Standardisation & Validation)**:
+    1. **Global Argument Standardisation**: Implement a unified CLI interface across all 24 reports.
+    2. **Runner Synchronisation**: Update all runners to dynamically detect and support the standardised reports.
+    3. **Historical Anchor Logic**: Standardise how date flags affect trend-based reports (e.g., dates act as the end-point for historical lookbacks).
+    4. **Template Audit**: Confirm all reports correctly utilise `templates/` and `resources/` for visual consistency.
+    5. **Final Validation**: Update `validate_all_reports.py` and achieve a 100% verified pass rate.

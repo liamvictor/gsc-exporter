@@ -11,15 +11,20 @@ import pandas as pd
 from datetime import datetime, date
 from dateutil.relativedelta import relativedelta
 from googleapiclient.errors import HttpError
+from core.naming import get_property_name
 
 CACHE_DIR = 'cache'
 
-def _get_cache_paths(cache_key):
-    """Returns the CSV and JSON paths for a given cache key."""
-    if not os.path.exists(CACHE_DIR):
-        os.makedirs(CACHE_DIR)
-    csv_path = os.path.join(CACHE_DIR, f"{cache_key}.csv")
-    json_path = os.path.join(CACHE_DIR, f"{cache_key}.json")
+def _get_cache_paths(cache_key, site_url):
+    """Returns the CSV and JSON paths for a given cache key within a site subfolder."""
+    property_name = get_property_name(site_url)
+    site_cache_dir = os.path.join(CACHE_DIR, property_name)
+    
+    if not os.path.exists(site_cache_dir):
+        os.makedirs(site_cache_dir, exist_ok=True)
+        
+    csv_path = os.path.join(site_cache_dir, f"{cache_key}.csv")
+    json_path = os.path.join(site_cache_dir, f"{cache_key}.json")
     return csv_path, json_path
 
 def _get_monthly_chunks(start_date, end_date):
@@ -117,7 +122,7 @@ def fetch_with_cache(service, site_url, start_date, end_date, dimensions, search
         cache_key_content = f"{site_url}|{s_str}|{e_str}|{','.join(dims)}|{search_type}"
         cache_key = hashlib.md5(cache_key_content.encode()).hexdigest()
         
-        csv_path, json_path = _get_cache_paths(cache_key)
+        csv_path, json_path = _get_cache_paths(cache_key, site_url)
         
         if os.path.exists(csv_path):
             print(f"  - [{i+1}/{total_chunks}] {month_label}: Using cached data: {cache_key}.")
