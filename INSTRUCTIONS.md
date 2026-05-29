@@ -46,4 +46,33 @@ This change has also been applied to the HTML template strings in:
 *   `queries-pages-analysis.py`
 *   `query-position-analysis.py`
 
-## Setup
+
+## GSC Monitoring Report
+
+The GSC Monitoring Report provides a weekly snapshot of key GSC metrics (`clicks`, `impressions`, `ctr`, `position`) for configured properties, allowing for proactive performance tracking.
+
+### Usage
+
+The report script is located at `reports/monitoring/canary_report.py`. 
+
+To generate a report using default settings:
+
+```bash
+python3 reports/monitoring/canary_report.py
+```
+
+### Configuration
+
+The script uses a JSON configuration file to define which properties to monitor. The default configuration file is `config/properties.json`.
+
+You can specify a different configuration file using the `--config` flag:
+
+```bash
+python3 reports/monitoring/canary_report.py --config config/my_properties.json
+```
+
+### Options
+
+*   `--config`: Path to the property configuration JSON file (default: `config/properties.json`).
+*   `--output-dir`: Directory where the HTML report will be saved (default: `output/account`).
+*   `--start-date`: Optionally set the week start date (format: `YYYY-MM-DD`). If omitted, the script dynamically detects the latest available data date from GSC to define the reporting week.
