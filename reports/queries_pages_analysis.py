@@ -57,74 +57,96 @@ def create_html_report(df, report_title, period_str):
 </html>
 """
 
-def run_report(service, site_url, start_date=None, end_date=None, months=16):
+def run_report(service, site_url, start_date=None, end_date=None, months=None):
     """
     Runs the queries and pages analysis report.
     """
-    print(f"Running queries/pages analysis for {site_url} ({months} months ending {end_date})")
-    
-    all_monthly_data = []
-    base_end_dt = datetime.strptime(end_date, '%Y-%m-%d')
+    if start_date and end_date and not months:
+        # Standard date range mode
+        print(f"Running queries/pages analysis for {site_url} ({start_date} to {end_date})")
+        df = fetch_with_cache(service, site_url, start_date, end_date, dimensions=['query', 'page'])
+        if df.empty:
+            print(f"No data found for {site_url}")
+            return
 
-    # Fetch data for each of the last N months
-    for i in range(months):
-        month_dt = base_end_dt - relativedelta(months=i)
-        m_start = month_dt.strftime('%Y-%m-01')
-        m_end = (month_dt + relativedelta(months=1) - timedelta(days=1)).strftime('%Y-%m-%d')
-        if i == 0:
-            m_end = end_date # Respect exact end_date for the target month
-        
-        print(f"  - Fetching data for {month_dt.strftime('%Y-%m')}...")
-        
-        # Use core.cache.fetch_with_cache to get data grouped by query/page
-        df = fetch_with_cache(service, site_url, m_start, m_end, dimensions=['query', 'page'])
-        
-        if not df.empty:
-            # Aggregate stats for the month
-            monthly_totals = {
-                'month': month_dt.strftime('%Y-%m'),
-                'clicks': df['clicks'].sum(),
-                'impressions': df['impressions'].sum(),
-                'queries': df['query'].nunique(),
-                'pages': df['page'].nunique(),
-                'ctr': df['clicks'].sum() / df['impressions'].sum() if df['impressions'].sum() > 0 else 0,
-                'position': df['position'].mean()
-            }
-            all_monthly_data.append(monthly_totals)
-    
-    # Save output
-    if all_monthly_data:
-        df_final = pd.DataFrame(all_monthly_data)
-        df_final = df_final.sort_values(by='month', ascending=False)
-        output_dir = get_output_dir(site_url)
-        os.makedirs(output_dir, exist_ok=True)
-        slug = get_filename_slug(site_url)
-        
-        csv_path = os.path.join(output_dir, f"queries-pages-analysis-{slug}-{end_date}.csv")
-        html_path = os.path.join(output_dir, f"queries-pages-analysis-{slug}-{end_date}.html")
-        
-        df_final.to_csv(csv_path, index=False, encoding='utf-8')
-        
-        # Save HTML
-        start_month = df_final['month'].min()
-        end_month = df_final['month'].max()
-        html_content = create_html_report(
-            df_final,
-            f"Queries and Pages Analysis: {site_url}",
-            f"{start_month} to {end_month}"
-        )
-        with open(html_path, 'w', encoding='utf-8') as f:
-            f.write(html_content)
-
-        print(f"CSV saved to: {csv_path}")
-        print(f"HTML saved to: {html_path}")
+        summary_data = {
+            'period': f"{start_date} to {end_date}",
+            'clicks': df['clicks'].sum(),
+            'impressions': df['impressions'].sum(),
+            'queries': df['query'].nunique(),
+            'pages': df['page'].nunique(),
+            'ctr': df['clicks'].sum() / df['impressions'].sum() if df['impressions'].sum() > 0 else 0,
+            'position': df['position'].mean()
+        }
+        df_final = pd.DataFrame([summary_data])
+        display_range = f"{start_date} to {end_date}"
     else:
-        print(f"No data found for {site_url}")
+        # Historical monthly mode
+        months = months or 16
+        print(f"Running monthly queries/pages analysis for {site_url} ({months} months ending {end_date})")
+        
+        all_monthly_data = []
+        base_end_dt = datetime.strptime(end_date, '%Y-%m-%d')
+
+        # Fetch data for each of the last N months
+        for i in range(months):
+            month_dt = base_end_dt - relativedelta(months=i)
+            m_start = month_dt.strftime('%Y-%m-01')
+            m_end = (month_dt + relativedelta(months=1) - timedelta(days=1)).strftime('%Y-%m-%d')
+            if i == 0:
+                m_end = end_date # Respect exact end_date for the target month
+            
+            print(f"  - Fetching data for {month_dt.strftime('%Y-%m')}...")
+            
+            df = fetch_with_cache(service, site_url, m_start, m_end, dimensions=['query', 'page'])
+            
+            if not df.empty:
+                monthly_totals = {
+                    'period': month_dt.strftime('%Y-%m'),
+                    'clicks': df['clicks'].sum(),
+                    'impressions': df['impressions'].sum(),
+                    'queries': df['query'].nunique(),
+                    'pages': df['page'].nunique(),
+                    'ctr': df['clicks'].sum() / df['impressions'].sum() if df['impressions'].sum() > 0 else 0,
+                    'position': df['position'].mean()
+                }
+                all_monthly_data.append(monthly_totals)
+        
+        if not all_monthly_data:
+            print(f"No data found for {site_url}")
+            return
+            
+        df_final = pd.DataFrame(all_monthly_data)
+        df_final = df_final.sort_values(by='period', ascending=False)
+        display_range = f"{df_final['period'].min()} to {df_final['period'].max()}"
+
+    # Save output
+    output_dir = get_output_dir(site_url)
+    os.makedirs(output_dir, exist_ok=True)
+    slug = get_filename_slug(site_url)
+    
+    file_prefix = f"queries-pages-analysis-{slug}-{end_date}"
+    csv_path = os.path.join(output_dir, f"{file_prefix}.csv")
+    html_path = os.path.join(output_dir, f"{file_prefix}.html")
+    
+    df_final.to_csv(csv_path, index=False, encoding='utf-8')
+    
+    # Save HTML
+    html_content = create_html_report(
+        df_final,
+        f"Queries and Pages Analysis: {site_url}",
+        display_range
+    )
+    with open(html_path, 'w', encoding='utf-8') as f:
+        f.write(html_content)
+
+    print(f"CSV saved to: {csv_path}")
+    print(f"HTML saved to: {html_path}")
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Run queries and pages analysis.')
     parser.add_argument('site_url', help='The URL of the site to analyse.')
-    parser.add_argument('--months', type=int, default=16, help='Number of months to analyse.')
+    parser.add_argument('--months', type=int, help='Number of months to analyse for historical report.')
     
     parser.add_argument('--start-date', help='Start date (YYYY-MM-DD).')
     parser.add_argument('--end-date', help='End date (YYYY-MM-DD).')
@@ -133,11 +155,10 @@ if __name__ == '__main__':
     
     args = parser.parse_args()
     
-    # Adhere to the standard argument interface.
-    
-    
     service = get_gsc_service()
     if service:
         start_date, end_date = parse_standard_date_args(args, service, args.site_url)
+        # If the user explicitly provided --months, we do the historical report.
+        # Otherwise, if they used --last-7-days or explicit dates, we do a single period report.
         run_report(service, args.site_url, start_date=start_date, end_date=end_date, months=args.months)
 
