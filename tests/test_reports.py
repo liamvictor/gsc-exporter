@@ -109,3 +109,33 @@ def test_url_inspection_report(mock_service, mocker):
     assert len(df) == 1
     assert df.iloc[0]['URL'] == url_to_inspect
     assert df.iloc[0]['Verdict'] == 'NEUTRAL'
+
+def test_url_inspection_report_smart_detection(mock_service, mocker):
+    # Mock available properties
+    mocker.patch('reports.url_inspection_report.get_available_properties', 
+                 return_value=['https://www.example.com/', 'sc-domain:example.com'])
+    
+    # Mock the API response
+    mock_response = {
+        'inspectionResult': {
+            'indexStatusResult': {'verdict': 'GOOD'}
+        }
+    }
+    mock_service.urlInspection().index().inspect().execute.return_value = mock_response
+    
+    from reports.url_inspection_report import run_report
+    
+    # Test Scenario: User provides ONLY the page URL
+    inspect_url = 'https://www.example.com/subpage'
+    # In the real script, this would be handled by the __main__ block logic, 
+    # but we can test find_best_property directly or simulate the call.
+    from reports.url_inspection_report import find_best_property
+    best_prop = find_best_property(inspect_url, ['https://www.example.com/', 'sc-domain:example.com'])
+    assert best_prop == 'https://www.example.com/'
+    
+    run_report(mock_service, best_prop, urls=[inspect_url])
+    
+    output_dir = get_output_dir(best_prop)
+    slug = get_filename_slug(best_prop)
+    assert 'www.example.com' in output_dir
+    assert os.path.exists(os.path.join(output_dir, f"url-inspection-{slug}-{datetime.now().strftime('%Y-%m-%d')}.html"))

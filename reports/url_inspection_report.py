@@ -1,16 +1,73 @@
 """
 Generates a report using the Google Search Console URL Inspection API.
-Adapted for the modular GSC Exporter.
+Adapted for the modular GSC Exporter with intelligent property detection.
 """
 import os
 import sys
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
+import argparse
 import pandas as pd
 from datetime import datetime
 from urllib.parse import urlparse
+
+# Add parent directory to sys.path to allow importing core
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 from core.naming import get_output_dir, get_filename_slug
 from core.date_utils import parse_standard_date_args
+from core.client import get_gsc_service, get_available_properties
+
+def find_best_property(inspect_url, available_properties):
+    """
+    Finds the best matching GSC property for a given URL.
+    Prefers exact URL-prefix matches over domain properties.
+    """
+    best_match = None
+    best_match_len = -1
+    
+    # Try to find the longest matching URL-prefix property
+    for prop in available_properties:
+        if prop.startswith('http') and inspect_url.startswith(prop):
+            if len(prop) > best_match_len:
+                best_match = prop
+                best_match_len = len(prop)
+                
+    if best_match:
+        return best_match
+    
+    # If no URL-prefix match, try to find a matching domain property
+    parsed_url = urlparse(inspect_url)
+    hostname = parsed_url.hostname
+    if not hostname:
+        return None
+        
+    for prop in available_properties:
+        if prop.startswith('sc-domain:'):
+            domain = prop.replace('sc-domain:', '')
+            if hostname == domain or hostname.endswith('.' + domain):
+                return prop
+                
+    return None
+
+def normalize_property(site_url, available_properties):
+    """Ensures the site_url matches the exact string registered in GSC (e.g. trailing slashes)."""
+    if site_url in available_properties:
+        return site_url
+    
+    # Try adding/removing trailing slash
+    if site_url.endswith('/'):
+        alt = site_url[:-1]
+    else:
+        alt = site_url + '/'
+        
+    if alt in available_properties:
+        return alt
+        
+    # Case insensitive check
+    for prop in available_properties:
+        if prop.lower() == site_url.lower():
+            return prop
+            
+    return site_url
 
 def get_url_inspection_data(service, site_url, inspect_url):
     """Fetches URL inspection data for a given URL."""
@@ -92,12 +149,9 @@ def create_html_report(df, report_title, timestamp):
 </html>
 """
 
-def run_report(service, site_url, start_date=None, end_date=None, urls=None, site_list_name="report"):
+def run_report(service, site_url, urls, site_list_name="report"):
     """Executes the URL inspection report for a list of URLs."""
-    if not urls:
-        urls = [site_url] if site_url.startswith('http') else []
-    
-    print(f"Running URL Inspection Report for {len(urls)} URLs on {site_url}...")
+    print(f"Running URL Inspection Report for {len(urls)} URLs using property: {site_url}")
     
     request_timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     current_date_str = datetime.now().strftime("%Y-%m-%d")
@@ -106,7 +160,6 @@ def run_report(service, site_url, start_date=None, end_date=None, urls=None, sit
     
     for url in urls:
         print(f"Inspecting: {url}")
-        # The site_url passed in is the GSC property to use
         inspection_data = get_url_inspection_data(service, site_url, url)
         all_inspection_results[url] = inspection_data
     
@@ -138,38 +191,58 @@ def run_report(service, site_url, start_date=None, end_date=None, urls=None, sit
     return html_path
 
 if __name__ == '__main__':
-    import argparse
-    from core.client import get_gsc_service
-    
     parser = argparse.ArgumentParser(description='Inspect URLs.')
-    parser.add_argument('site_url', help='The GSC property URL.')
-    parser.add_argument('--url', help='Single URL to inspect.')
-    parser.add_argument('--sites-file', help='File with URLs.')
-    parser.add_argument('--start-date', help='Start date (YYYY-MM-DD).')
-    parser.add_argument('--end-date', help='End date (YYYY-MM-DD).')
-    parser.add_argument('--last-7-days', action='store_true', help='Run for the last 7 available days.')
-    parser.add_argument('--last-month', action='store_true', help='Run for the last calendar month.')
+    parser.add_argument('site_url_or_prop', help='GSC property OR a specific URL to inspect.')
+    parser.add_argument('--url', help='Single URL to inspect (if first arg is the property).')
+    parser.add_argument('--sites-file', help='File with a list of URLs to inspect.')
+    
+    # Standard boilerplate for modular reports
+    parser.add_argument('--start-date', help='Ignored for this report.')
+    parser.add_argument('--end-date', help='Ignored for this report.')
+    parser.add_argument('--last-7-days', action='store_true', help='Ignored for this report.')
+    parser.add_argument('--last-month', action='store_true', help='Ignored for this report.')
     
     args = parser.parse_args()
     
     service = get_gsc_service()
-    if service:
-        start_date, end_date = parse_standard_date_args(args, service, args.site_url)
+    if not service:
+        sys.exit(1)
         
-        urls = []
-        name = "report"
-        if args.url:
-            urls = [args.url]
-            name = "single"
-        elif args.sites_file:
-            with open(args.sites_file, 'r') as f:
-                urls = [line.strip() for line in f if line.strip()]
-            name = os.path.splitext(os.path.basename(args.sites_file))[0]
+    available_properties = get_available_properties(service)
+    
+    site_url = args.site_url_or_prop
+    urls = []
+    
+    # SMART DETECTION LOGIC
+    # Scenario 1: First arg is a property and --url is provided
+    if args.url:
+        site_url = normalize_property(args.site_url_or_prop, available_properties)
+        urls = [args.url]
+    # Scenario 2: First arg is a property and --sites-file is provided
+    elif args.sites_file:
+        site_url = normalize_property(args.site_url_or_prop, available_properties)
+        with open(args.sites_file, 'r') as f:
+            urls = [line.strip() for line in f if line.strip()]
+    # Scenario 3: First arg IS the URL to inspect (Intelligent separation)
+    else:
+        # Check if the argument is actually a known property
+        prop = normalize_property(args.site_url_or_prop, available_properties)
+        if prop in available_properties:
+            # It's a property. Inspect its root.
+            site_url = prop
+            urls = [prop] if prop.startswith('http') else []
         else:
-            urls = [args.site_url] if args.site_url.startswith('http') else []
-            name = "site-root"
-            
-        if urls:
-            run_report(service, args.site_url, start_date, end_date, urls, name)
-        else:
-            print("No URLs provided for inspection.")
+            # It's not a property. Assume it's an inspection URL.
+            best_prop = find_best_property(args.site_url_or_prop, available_properties)
+            if best_prop:
+                site_url = best_prop
+                urls = [args.site_url_or_prop]
+                print(f"Intelligently detected property '{site_url}' for URL '{args.site_url_or_prop}'")
+            else:
+                print(f"Error: Could not find an authorized GSC property for '{args.site_url_or_prop}'")
+                sys.exit(1)
+
+    if urls:
+        run_report(service, site_url, urls)
+    else:
+        print("No valid URLs found for inspection.")

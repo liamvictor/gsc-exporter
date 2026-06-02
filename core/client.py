@@ -51,3 +51,13 @@ def get_gsc_service():
             print("Authentication successful. Credentials saved.")
 
     return build('searchconsole', 'v1', credentials=creds)
+
+def get_available_properties(service):
+    """Fetches all sites (properties) from the GSC API."""
+    try:
+        site_list = service.sites().list().execute()
+        if 'siteEntry' in site_list:
+            return [entry['siteUrl'] for entry in site_list['siteEntry']]
+    except Exception as e:
+        print(f"Error fetching properties: {e}")
+    return []
