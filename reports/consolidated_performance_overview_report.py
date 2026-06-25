@@ -239,6 +239,201 @@ def create_consolidated_html(df_types, df_appearances, date_range_str):
 
     return html_output
 
+def create_property_grouped_html(df_types, df_appearances, date_range_str):
+    """Generates a separate HTML report where each property has its own section containing its search type and appearance tables."""
+    
+    df_types_disp = df_types.copy()
+    df_types_disp['clicks'] = pd.to_numeric(df_types_disp['clicks'], errors='coerce').fillna(0)
+    df_types_disp['impressions'] = pd.to_numeric(df_types_disp['impressions'], errors='coerce').fillna(0)
+    df_types_disp['ctr'] = pd.to_numeric(df_types_disp['ctr'], errors='coerce').fillna(0)
+    df_types_disp['position'] = pd.to_numeric(df_types_disp['position'], errors='coerce').fillna(0)
+
+    df_apps_disp = df_appearances.copy()
+    df_apps_disp['clicks'] = pd.to_numeric(df_apps_disp['clicks'], errors='coerce').fillna(0)
+    df_apps_disp['impressions'] = pd.to_numeric(df_apps_disp['impressions'], errors='coerce').fillna(0)
+    df_apps_disp['ctr'] = pd.to_numeric(df_apps_disp['ctr'], errors='coerce').fillna(0)
+    df_apps_disp['position'] = pd.to_numeric(df_apps_disp['position'], errors='coerce').fillna(0)
+
+    # Get a list of all unique site URLs across both tables
+    all_sites = sorted(list(set(df_types_disp['site_url'].unique()) | set(df_apps_disp['site_url'].unique())))
+    
+    # 1. Navigation Menu
+    nav_links = []
+    for site in all_sites:
+        slug = get_filename_slug(site)
+        nav_links.append(f'<a href="#prop-{slug}" class="btn btn-outline-secondary btn-sm m-1">{site}</a>')
+    
+    nav_html = f"""
+    <div id="top" class="card mb-4 bg-light shadow-sm">
+        <div class="card-body">
+            <h5 class="card-title text-primary mb-3">Quick Navigation: Jump to Property</h5>
+            <div class="d-flex flex-wrap justify-content-center">
+                {"".join(nav_links)}
+            </div>
+        </div>
+    </div>
+    """
+
+    # 2. Generate Sections for Each Property
+    property_sections = []
+    for site in all_sites:
+        slug = get_filename_slug(site)
+        
+        # A. Search Type Table
+        site_types_df = df_types_disp[df_types_disp['site_url'] == site].copy()
+        if not site_types_df.empty:
+            tot_clicks_t = site_types_df['clicks'].sum()
+            tot_imps_t = site_types_df['impressions'].sum()
+            tot_ctr_t = tot_clicks_t / tot_imps_t if tot_imps_t > 0 else 0
+            tot_pos_t = site_types_df['position'].mean()
+            
+            site_types_df_disp = site_types_df.copy()
+            site_types_df_disp['clicks'] = site_types_df_disp['clicks'].apply(lambda x: f"{x:,.0f}")
+            site_types_df_disp['impressions'] = site_types_df_disp['impressions'].apply(lambda x: f"{x:,.0f}")
+            site_types_df_disp['ctr'] = site_types_df_disp['ctr'].apply(lambda x: f"{x:.2%}")
+            site_types_df_disp['position'] = site_types_df_disp['position'].apply(lambda x: f"{x:.2f}")
+            
+            site_types_df_disp = site_types_df_disp.drop(columns=['site_url'])
+            site_types_df_disp = site_types_df_disp.rename(columns={
+                'search_type': 'Search Type',
+                'clicks': 'Clicks',
+                'impressions': 'Impressions',
+                'ctr': 'CTR',
+                'position': 'Avg. Position'
+            })
+            site_types_df_disp = site_types_df_disp[['Search Type', 'Clicks', 'Impressions', 'CTR', 'Avg. Position']]
+            
+            for col in site_types_df_disp.columns:
+                site_types_df_disp[col] = site_types_df_disp[col].astype(str)
+                
+            total_row_t = pd.DataFrame([{
+                'Search Type': '<strong>Total</strong>',
+                'Clicks': f"<strong>{tot_clicks_t:,.0f}</strong>",
+                'Impressions': f"<strong>{tot_imps_t:,.0f}</strong>",
+                'CTR': f"<strong>{tot_ctr_t:.2%}</strong>",
+                'Avg. Position': f"<strong>{tot_pos_t:.2f}</strong>"
+            }])
+            site_types_df_disp = pd.concat([site_types_df_disp, total_row_t], ignore_index=True)
+            types_table_html = site_types_df_disp.to_html(classes="table table-striped table-hover", index=False, border=0, escape=False)
+        else:
+            types_table_html = "<p class='text-muted'>No search type data recorded for this property.</p>"
+            
+        # B. Search Appearance Table
+        site_apps_df = df_apps_disp[df_apps_disp['site_url'] == site].copy()
+        if not site_apps_df.empty:
+            tot_clicks_a = site_apps_df['clicks'].sum()
+            tot_imps_a = site_apps_df['impressions'].sum()
+            tot_ctr_a = tot_clicks_a / tot_imps_a if tot_imps_a > 0 else 0
+            tot_pos_a = site_apps_df['position'].mean()
+            
+            site_apps_df_disp = site_apps_df.copy()
+            site_apps_df_disp['clicks'] = site_apps_df_disp['clicks'].apply(lambda x: f"{x:,.0f}")
+            site_apps_df_disp['impressions'] = site_apps_df_disp['impressions'].apply(lambda x: f"{x:,.0f}")
+            site_apps_df_disp['ctr'] = site_apps_df_disp['ctr'].apply(lambda x: f"{x:.2%}")
+            site_apps_df_disp['position'] = site_apps_df_disp['position'].apply(lambda x: f"{x:.2f}")
+            
+            site_apps_df_disp = site_apps_df_disp.drop(columns=['site_url'])
+            site_apps_df_disp = site_apps_df_disp.rename(columns={
+                'searchAppearance': 'Search Appearance',
+                'clicks': 'Clicks',
+                'impressions': 'Impressions',
+                'ctr': 'CTR',
+                'position': 'Avg. Position'
+            })
+            site_apps_df_disp = site_apps_df_disp[['Search Appearance', 'Clicks', 'Impressions', 'CTR', 'Avg. Position']]
+            
+            for col in site_apps_df_disp.columns:
+                site_apps_df_disp[col] = site_apps_df_disp[col].astype(str)
+                
+            total_row_a = pd.DataFrame([{
+                'Search Appearance': '<strong>Total</strong>',
+                'Clicks': f"<strong>{tot_clicks_a:,.0f}</strong>",
+                'Impressions': f"<strong>{tot_imps_a:,.0f}</strong>",
+                'CTR': f"<strong>{tot_ctr_a:.2%}</strong>",
+                'Avg. Position': f"<strong>{tot_pos_a:.2f}</strong>"
+            }])
+            site_apps_df_disp = pd.concat([site_apps_df_disp, total_row_a], ignore_index=True)
+            apps_table_html = site_apps_df_disp.to_html(classes="table table-striped table-hover", index=False, border=0, escape=False)
+        else:
+            apps_table_html = "<p class='text-muted'>No search appearance data recorded for this property.</p>"
+            
+        # C. Combined Property Section
+        property_sections.append(f"""
+        <div id="prop-{slug}" class="property-section mb-5 shadow-sm border rounded p-4 bg-white">
+            <h3 class="text-primary border-bottom pb-2 mb-4">{site}</h3>
+            
+            <div class="row">
+                <div class="col-12 mb-4">
+                    <h5 class="text-secondary mb-2">Search Type Performance</h5>
+                    <div class="table-responsive">
+                        {types_table_html}
+                    </div>
+                </div>
+                <div class="col-12 mb-2">
+                    <h5 class="text-secondary mb-2">Search Appearance Performance</h5>
+                    <div class="table-responsive">
+                        {apps_table_html}
+                    </div>
+                </div>
+            </div>
+            <div class="text-end">
+                <a href="#top" class="text-muted btn btn-link btn-sm mt-2">↑ Back to Property List</a>
+            </div>
+        </div>
+        """)
+
+    # 3. Create main content with explanation
+    main_html = f"""
+    <style>
+        .table th, .table td {{
+            text-align: left !important;
+        }}
+        .table th:nth-child(n+2), 
+        .table td:nth-child(n+2) {{
+            text-align: right !important;
+        }}
+        .explanation-card {{
+            background-color: #f8f9fa;
+            border-left: 5px solid #0d6efd;
+            border-radius: 4px;
+            padding: 1.5rem;
+            margin-bottom: 2.5rem;
+        }}
+        .property-section {{
+            transition: all 0.2s ease-in-out;
+        }}
+        .property-section:hover {{
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+        }}
+    </style>
+
+    <div class="explanation-card shadow-sm">
+        <h4 class="text-primary mb-3">Property-Grouped Performance Overview</h4>
+        <p>This report groups metrics by individual property. For each domain, you can review its search channels and enhanced visual search appearances side by side.</p>
+        <p class="mb-0 text-muted"><em>Please note that Search Appearance data (visual snippets, FAQs, product metadata, etc.) is a subset of Web search traffic and may contain overlap across categories.</em></p>
+    </div>
+
+    {nav_html}
+
+    <div class="property-sections-container mt-4">
+        {"".join(property_sections)}
+    </div>
+    """
+
+    template_loader = FileSystemLoader('resources')
+    env = Environment(loader=template_loader)
+    template = env.get_template('report-blank.html')
+
+    html_output = template.render(
+        title="Property-Grouped Performance Overview",
+        report_name="Property-Grouped Performance Overview",
+        domain_name="All Properties",
+        date_range=date_range_str,
+        main_content=main_html
+    )
+
+    return html_output
+
 def run_report(service, start_date, end_date):
     """Retrieves and generates the consolidated report."""
     print("Fetching all properties in the Google Search Console account...")
@@ -297,19 +492,26 @@ def run_report(service, start_date, end_date):
     csv_types_path = os.path.join(output_dir, f"{file_prefix}-search-types.csv")
     csv_apps_path = os.path.join(output_dir, f"{file_prefix}-search-appearances.csv")
     html_path = os.path.join(output_dir, f"{file_prefix}.html")
+    html_prop_path = os.path.join(output_dir, f"consolidated-performance-overview-by-property-{start_date}-to-{end_date}.html")
 
     # Save CSVs
     df_types_combined.to_csv(csv_types_path, index=False, encoding='utf-8')
     df_apps_combined.to_csv(csv_apps_path, index=False, encoding='utf-8')
 
-    # Save HTML
+    # Save HTML (Sections)
     html_content = create_consolidated_html(df_types_combined, df_apps_combined, f"{start_date} to {end_date}")
     with open(html_path, 'w', encoding='utf-8') as f:
         f.write(html_content)
 
+    # Save HTML (By Property)
+    html_prop_content = create_property_grouped_html(df_types_combined, df_apps_combined, f"{start_date} to {end_date}")
+    with open(html_prop_path, 'w', encoding='utf-8') as f:
+        f.write(html_prop_content)
+
     print(f"\nCSV (Search Types) saved to: {csv_types_path}")
     print(f"CSV (Search Appearances) saved to: {csv_apps_path}")
-    print(f"HTML Overview saved to: {html_path}")
+    print(f"HTML Overview (Sections) saved to: {html_path}")
+    print(f"HTML Overview (By Property) saved to: {html_prop_path}")
     return html_path
 
 if __name__ == '__main__':
