@@ -16,6 +16,29 @@ from core.naming import get_output_dir, get_filename_slug
 from core.cache import fetch_with_cache
 from core.client import get_gsc_service, get_available_properties
 from core.date_utils import parse_standard_date_args
+from urllib.parse import urlparse
+
+def get_sort_key(site_url):
+    """Creates a hierarchical sort key: root domain -> type -> subdomain."""
+    if site_url.startswith('sc-domain:'):
+        hostname = site_url.replace('sc-domain:', '')
+        priority = 0
+    else:
+        hostname = urlparse(site_url).netloc
+        if hostname.startswith('www.'):
+            priority = 1
+        else:
+            priority = 2
+
+    # Extract root domain for grouping (e.g., 'croneri.co.uk')
+    parts = hostname.split('.')
+    # Handle common multi-part TLDs like .co.uk, .org.uk, etc.
+    if len(parts) > 2 and parts[-2] in ['co', 'com', 'org', 'net', 'gov', 'edu', 'ac']:
+        root_domain = '.'.join(parts[-3:])
+    else:
+        root_domain = '.'.join(parts[-2:])
+        
+    return (root_domain, priority, hostname)
 
 SEARCH_TYPES = ['web', 'image', 'video', 'news', 'discover', 'googleNews']
 
@@ -29,7 +52,7 @@ def create_consolidated_html(df_types, df_appearances, date_range_str):
     df_types_disp['ctr'] = pd.to_numeric(df_types_disp['ctr'], errors='coerce').fillna(0)
     df_types_disp['position'] = pd.to_numeric(df_types_disp['position'], errors='coerce').fillna(0)
 
-    unique_sites_types = sorted(df_types_disp['site_url'].unique())
+    unique_sites_types = sorted(df_types_disp['site_url'].unique(), key=get_sort_key)
     types_tables_html = []
     
     for site in unique_sites_types:
@@ -91,7 +114,7 @@ def create_consolidated_html(df_types, df_appearances, date_range_str):
     df_apps_disp['ctr'] = pd.to_numeric(df_apps_disp['ctr'], errors='coerce').fillna(0)
     df_apps_disp['position'] = pd.to_numeric(df_apps_disp['position'], errors='coerce').fillna(0)
 
-    unique_sites_apps = sorted(df_apps_disp['site_url'].unique())
+    unique_sites_apps = sorted(df_apps_disp['site_url'].unique(), key=get_sort_key)
     apps_tables_html = []
     
     for site in unique_sites_apps:
@@ -255,17 +278,27 @@ def create_property_grouped_html(df_types, df_appearances, date_range_str):
     df_apps_disp['position'] = pd.to_numeric(df_apps_disp['position'], errors='coerce').fillna(0)
 
     # Get a list of all unique site URLs across both tables
-    all_sites = sorted(list(set(df_types_disp['site_url'].unique()) | set(df_apps_disp['site_url'].unique())))
+    unique_sites = list(set(df_types_disp['site_url'].unique()) | set(df_apps_disp['site_url'].unique()))
+    all_sites = sorted(unique_sites, key=get_sort_key)
     
-    # 1. Navigation Menu (Three Column List of Links)
-    chunk_size = (len(all_sites) + 2) // 3
-    col_chunks = [all_sites[i:i + chunk_size] for i in range(0, len(all_sites), chunk_size)]
+    # 1. Navigation Menu (Three Column List of Links with Subdomain Indentation)
+    last_root = None
+    sites_with_indent = []
+    for site in all_sites:
+        root_domain, priority, hostname = get_sort_key(site)
+        indent = (root_domain == last_root)
+        sites_with_indent.append((site, indent))
+        last_root = root_domain
+
+    chunk_size = (len(sites_with_indent) + 2) // 3
+    col_chunks = [sites_with_indent[i:i + chunk_size] for i in range(0, len(sites_with_indent), chunk_size)]
     col_htmls = []
     for chunk in col_chunks:
         chunk_links = []
-        for site in chunk:
+        for site, indent in chunk:
             slug = get_filename_slug(site)
-            chunk_links.append(f'<li class="mb-1"><a href="#prop-{slug}" class="text-decoration-none">{site}</a></li>')
+            li_class = "mb-1 ps-4" if indent else "mb-1"
+            chunk_links.append(f'<li class="{li_class}"><a href="#prop-{slug}" class="text-decoration-none">{site}</a></li>')
         col_htmls.append(f'<ul class="list-unstyled mb-0">{"".join(chunk_links)}</ul>')
     
     while len(col_htmls) < 3:
