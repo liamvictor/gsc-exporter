@@ -243,8 +243,8 @@ if __name__ == '__main__':
     if service:
         start_date, end_date = parse_standard_date_args(args, service, args.site_url)
         # Determine the actual site_url and page_url from both positional and optional args
-    final_site_url = args.site_url_opt if args.site_url_opt else args.site_url
-    final_page_url = args.page_url
+        final_site_url = args.site_url_opt if args.site_url_opt else args.site_url
+        final_page_url = args.page_url
         run_report(service, final_page_url, site_url=final_site_url, 
                    start_date=start_date, end_date=end_date, months=args.months)
 

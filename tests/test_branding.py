@@ -27,73 +27,54 @@ def test_apply_branding_disabled():
     result = apply_branding_to_html(html, "test.html", config)
     assert result == html
 
-def test_apply_branding_enabled_inject():
-    html = "<html><head></head><body><header><div class='container'>Original Header</div></header><main></main><footer>Original Footer</footer></body></html>"
+def test_apply_branding_enabled():
+    html = "<html><head></head><body><main>Content</main></body></html>"
     config = {
         "enabled": True,
         "theme": {
-            "primary_colour": "#ff0000"
+            "primary_colour": "#1a73e8",
+            "text_colour": "#ffffff",
+            "font_family": "'Outfit', sans-serif"
         },
-        "header": {
-            "enabled": True,
-            "logo_url": "http://logo.png",
-            "text": "My Brand",
-            "mode": "inject"
-        },
-        "footer": {
-            "enabled": True,
-            "text": "Footer Brand",
-            "mode": "inject"
-        }
+        "logo_url": "http://example.com/logo.png",
+        "link_url": "https://github.com/my-repo",
+        "text": "My Brand Logo Text",
+        "links": [
+            {
+                "text": "Repository",
+                "url": "https://github.com/my-repo"
+            },
+            {
+                "text": "General Docs",
+                "url": "https://github.com/my-repo/docs"
+            }
+        ]
     }
     result = apply_branding_to_html(html, "test.html", config)
-    assert "#ff0000" in result
-    assert "My Brand" in result
-    assert "Footer Brand" in result
-    assert "Original Header" in result
-    assert "Original Footer" in result
+    assert "#1a73e8" in result
+    assert "My Brand Logo Text" in result
+    assert "http://example.com/logo.png" in result
+    assert "General Docs" in result
+    assert "Repository" in result
+    assert "Content" in result
 
-def test_apply_branding_replace():
-    html = "<html><head></head><body><header>Original Header</header><main></main><footer>Original Footer</footer></body></html>"
+@patch('core.branding.find_report_doc_filename', return_value='snapshot-report.md')
+def test_apply_branding_with_bespoke_doc_link(mock_find):
+    html = "<html><head></head><body><main>Content</main></body></html>"
     config = {
         "enabled": True,
-        "header": {
-            "enabled": True,
-            "text": "Brand Header",
-            "mode": "replace"
-        },
-        "footer": {
-            "enabled": True,
-            "text": "Brand Footer",
-            "mode": "replace"
-        }
+        "link_url": "https://github.com/my-repo",
+        "text": "My Brand Logo Text",
+        "links": [
+            {
+                "text": "Repository",
+                "url": "https://github.com/my-repo"
+            }
+        ]
     }
     result = apply_branding_to_html(html, "test.html", config)
-    assert "Brand Header" in result
-    assert "Brand Footer" in result
-    assert "Original Header" not in result
-    assert "Original Footer" not in result
-
-def test_apply_branding_bar():
-    html = "<html><head></head><body><header>Original Header</header><main></main><footer>Original Footer</footer></body></html>"
-    config = {
-        "enabled": True,
-        "header": {
-            "enabled": True,
-            "text": "Top Bar Brand",
-            "mode": "bar"
-        },
-        "footer": {
-            "enabled": True,
-            "text": "Bottom Bar Brand",
-            "mode": "bar"
-        }
-    }
-    result = apply_branding_to_html(html, "test.html", config)
-    assert "Top Bar Brand" in result
-    assert "Bottom Bar Brand" in result
-    assert "Original Header" in result
-    assert "Original Footer" in result
+    assert "Report Documentation" in result
+    assert "https://github.com/my-repo/blob/main/resources/reports/snapshot-report.md" in result
 
 def test_argparse_patch():
     parser = argparse.ArgumentParser()
@@ -106,11 +87,7 @@ def test_file_write_hook(tmp_path):
     test_file = tmp_path / "report.html"
     config = {
         "enabled": True,
-        "header": {
-            "enabled": True,
-            "text": "File Brand Header",
-            "mode": "bar"
-        }
+        "text": "File Brand Title"
     }
     
     with patch('core.branding.load_branding_config', return_value=config):
@@ -120,7 +97,7 @@ def test_file_write_hook(tmp_path):
     with open(test_file, 'r', encoding='utf-8') as f:
         content = f.read()
         
-    assert "File Brand Header" in content
+    assert "File Brand Title" in content
     assert "Hello" in content
 
 def test_branding_integration_on_report(mocker):
@@ -153,11 +130,7 @@ def test_branding_integration_on_report(mocker):
         "theme": {
             "primary_colour": "#123456"
         },
-        "header": {
-            "enabled": True,
-            "text": "Integration Brand Header",
-            "mode": "bar"
-        }
+        "text": "Integration Brand Title"
     }
     
     from core.naming import get_output_dir, get_filename_slug
@@ -178,7 +151,7 @@ def test_branding_integration_on_report(mocker):
     with open(html_path, 'r', encoding='utf-8') as f:
         content = f.read()
         
-    assert "Integration Brand Header" in content
+    assert "Integration Brand Title" in content
     assert "#123456" in content
     
     # Clean up output files
@@ -187,4 +160,3 @@ def test_branding_integration_on_report(mocker):
     csv_path = os.path.join(output_dir, f"performance-analysis-{slug}-2024-01-01-to-2024-01-31.csv")
     if os.path.exists(csv_path):
         os.remove(csv_path)
-
