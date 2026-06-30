@@ -1,91 +1,1606 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
     <meta charset="UTF-8">
-    <title>GSC Monitoring Report: {{ report_timestamp }}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GSC Executive Canary Report: {{ report_timestamp }}</title>
+    
+    <!-- Fonts & Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
     <style>
-        body { font-family: sans-serif; margin: 20px; }
-        h1 { color: #333; }
-        h2 { border-bottom: 2px solid #eee; padding-bottom: 5px; margin-top: 20px; }
-        table { border-collapse: collapse; width: 100%; margin-bottom: 15px; }
-        th, td { border: 1px solid #ddd; padding: 5px; text-align: left; font-size: 14px;}
-        th { background-color: #f4f4f4; }
+        :root {
+            --bg-body: #f8fafc;
+            --bg-card: #ffffff;
+            --text-primary: #0f172a;
+            --text-secondary: #475569;
+            --text-muted: #94a3b8;
+            --border-color: #e2e8f0;
+            --primary-rgb: 99, 102, 241; /* Indigo */
+            
+            --success-bg: #d1fae5;
+            --success-color: #065f46;
+            --warning-bg: #fef3c7;
+            --warning-color: #92400e;
+            --danger-bg: #fee2e2;
+            --danger-color: #991b1b;
+            --info-bg: #e0f2fe;
+            --info-color: #075985;
+            
+            --card-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+            --header-bg: rgba(255, 255, 255, 0.8);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-body);
+            color: var(--text-primary);
+            transition: background-color 0.3s ease, color 0.3s ease;
+            min-height: 100vh;
+        }
+
+        .glass-header {
+            background-color: var(--header-bg);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 0;
+            z-index: 1020;
+            transition: background-color 0.3s ease, border-color 0.3s ease;
+        }
+
+        .dashboard-card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            box-shadow: var(--card-shadow);
+            padding: 24px;
+            margin-bottom: 24px;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.3s ease, border-color 0.3s ease;
+        }
+
+        .dashboard-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.08);
+        }
+
+        .kpi-card {
+            border-top: 4px solid rgb(var(--primary-rgb));
+        }
+
+        .kpi-val {
+            font-size: 2rem;
+            font-weight: 700;
+            letter-spacing: -0.025em;
+            margin: 8px 0;
+        }
+
+        .status-badge {
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 4px 8px;
+            border-radius: 12px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            transition: all 0.2s;
+        }
+
+        .status-badge.positive-strong-green,
+        .status-badge.positive-moderate-green {
+            background-color: var(--success-bg);
+            color: var(--success-color);
+        }
+
+        .status-badge.amber {
+            background-color: var(--warning-bg);
+            color: var(--warning-color);
+        }
+
+        .status-badge.red {
+            background-color: var(--danger-bg);
+            color: var(--danger-color);
+        }
+
+        .status-badge.neutral {
+            background-color: var(--bg-body);
+            color: var(--text-secondary);
+            border: 1px solid var(--border-color);
+        }
+
+        /* Custom Tabs Styling */
+        .nav-pills .nav-link {
+            color: var(--text-secondary);
+            border-radius: 10px;
+            font-weight: 500;
+            padding: 10px 20px;
+            transition: all 0.2s ease;
+            border: 1px solid transparent;
+        }
+
+        .nav-pills .nav-link:hover {
+            background-color: var(--border-color);
+            color: var(--text-primary);
+        }
+
+        .nav-pills .nav-link.active {
+            background-color: rgb(var(--primary-rgb));
+            color: #ffffff;
+        }
+
+        /* Table Styling */
+        .table-responsive {
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+        }
+
+        .custom-table {
+            margin-bottom: 0;
+            background-color: var(--bg-card);
+            color: var(--text-primary);
+            vertical-align: middle;
+        }
+
+        .custom-table th {
+            background-color: var(--bg-body);
+            color: var(--text-secondary);
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.05em;
+            padding: 16px;
+            border-bottom: 2px solid var(--border-color);
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .custom-table th:hover {
+            background-color: var(--border-color);
+        }
+
+        .custom-table td {
+            padding: 16px;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.875rem;
+        }
+
+        .custom-table tbody tr:hover {
+            background-color: rgba(var(--primary-rgb), 0.02);
+        }
+
+        /* Canary warning banner */
+        .canary-alert-banner {
+            border-left: 5px solid var(--danger-color);
+            background-color: var(--danger-bg);
+            color: var(--danger-color);
+            padding: 16px 20px;
+            border-radius: 12px;
+            margin-bottom: 24px;
+        }
+
+        .property-checkbox-list {
+            max-height: 250px;
+            overflow-y: auto;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 12px;
+            background-color: var(--bg-body);
+        }
+
+        .chart-container {
+            position: relative;
+            height: 380px;
+            width: 100%;
+        }
+
+        .badge-pill-outline {
+            border: 1px solid var(--border-color);
+            padding: 2px 8px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        /* Micro-animations */
+        @keyframes pulse-slow {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+        .pulse-warning {
+            animation: pulse-slow 2s infinite ease-in-out;
+        }
+
+        .sort-icon::after {
+            content: ' \2195';
+            opacity: 0.3;
+            font-size: 0.8em;
+        }
+        .sort-asc::after {
+            content: ' \2191';
+            opacity: 1;
+        }
+        .sort-desc::after {
+            content: ' \2193';
+            opacity: 1;
+        }
+
+        /* Flip Card Styles */
+        .flip-card-container {
+            perspective: 1000px;
+            cursor: pointer;
+            margin-bottom: 24px;
+            height: 190px;
+        }
         
-        /* New top-level container for period and legend */
-        .top-container {
+        .flip-card {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            transform-style: preserve-3d;
+        }
+        
+        .flip-card.flipped {
+            transform: rotateY(180deg);
+        }
+        
+        .flip-card-front, .flip-card-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
+            margin-bottom: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        
+        .flip-card-back {
+            transform: rotateY(180deg);
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            box-shadow: var(--card-shadow);
+            padding: 20px;
+        }
+        
+        .property-scroll-list {
+            max-height: 110px;
+            overflow-y: auto;
+            margin-top: 8px;
+            padding-right: 4px;
+        }
+
+        /* Scrollbar styles for the tiny scrollable list */
+        .property-scroll-list::-webkit-scrollbar {
+            width: 4px;
+        }
+        .property-scroll-list::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .property-scroll-list::-webkit-scrollbar-thumb {
+            background-color: var(--border-color);
+            border-radius: 4px;
+        }
+
+        /* Static Tables for Non-JS environments */
+        #static-tables {
+            margin-top: 20px;
+        }
+        
+        .static-top-container {
             display: flex;
             justify-content: flex-start;
             margin-bottom: 20px;
             gap: 40px;
             align-items: flex-start;
+            flex-wrap: wrap;
         }
 
-        .period-table { width: auto; margin-bottom: 0; }
+        .static-period-table {
+            width: auto;
+            margin-bottom: 0;
+        }
 
-        /* Styling for colored cells */
-        td.amber { background-color: #fff3cd; color: #856404; font-weight: bold; text-align: center; }
-        td.red { background-color: #f8d7da; color: #721c24; font-weight: bold; text-align: center; }
-        td.positive-moderate-green { background-color: #a3e0a3; color: #0a4c0a; font-weight: bold; text-align: center; }
-        td.positive-strong-green { background-color: #6aaa6a; color: #052c05; font-weight: bold; text-align: center; }
+        .static-table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-bottom: 25px;
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+        }
+        
+        .static-table th, .static-table td {
+            border: 1px solid var(--border-color);
+            padding: 8px 12px;
+            text-align: left;
+            font-size: 14px;
+        }
+        
+        .static-table th {
+            background-color: var(--border-color);
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+        
+        /* Styling for coloured cells in static tables */
+        .static-table td.amber {
+            background-color: #fff3cd !important;
+            color: #856404 !important;
+            font-weight: bold;
+            text-align: center;
+        }
+        
+        .static-table td.red {
+            background-color: #f8d7da !important;
+            color: #721c24 !important;
+            font-weight: bold;
+            text-align: center;
+        }
+        
+        .static-table td.positive-moderate-green {
+            background-color: #a3e0a3 !important;
+            color: #0a4c0a !important;
+            font-weight: bold;
+            text-align: center;
+        }
+        
+        .static-table td.positive-strong-green {
+            background-color: #6aaa6a !important;
+            color: #052c05 !important;
+            font-weight: bold;
+            text-align: center;
+        }
 
-        /* Styling for color legend */
-        .color-scheme-legend { font-size: 0.9em; color: #555; }
-        .color-scheme-legend table { width: auto; border: none; }
-        .color-scheme-legend th, .color-scheme-legend td { border: none; padding: 2px 5px; }
-        .color-box { width: 40px; height: 20px; border: 1px solid #ddd; }
+        /* Styling for colour legend in static tables */
+        .static-color-scheme-legend {
+            font-size: 0.9em;
+            color: var(--text-secondary);
+        }
+        
+        .static-color-scheme-legend table {
+            width: auto;
+            border: none;
+        }
+        
+        .static-color-scheme-legend th, .static-color-scheme-legend td {
+            border: none;
+            padding: 4px 8px;
+        }
+        
+        .static-color-box {
+            width: 40px;
+            height: 20px;
+            border: 1px solid var(--border-color);
+        }
     </style>
 </head>
 <body>
-    <h1>GSC (Google Organic) Monitoring</h1>
-    <p>Report generated: {{ report_timestamp }}</p>
 
-    <div class="top-container">
-        <div>
-            <h2>Time Periods</h2>
-            <table class="period-table">
-                <tr><th>Period</th><th>Date Range</th></tr>
-                {% for period, range in periods.items() %}
-                <tr><td>{{ period }}</td><td>{{ range }}</td></tr>
-                {% endfor %}
-            </table>
+    <!-- Header -->
+    <header class="glass-header py-3 mb-4">
+        <div class="container-fluid px-4 d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center gap-3">
+                <div class="bg-danger text-white rounded-3 p-2 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                    <i class="bi bi-shield-fill-exclamation fs-5 pulse-warning"></i>
+                </div>
+                <div>
+                    <h1 class="h4 mb-0 fw-bold">Canary Performance Monitor</h1>
+                    <p class="text-muted small mb-0">Google Search Console Organic Traffic Oversight</p>
+                </div>
+            </div>
+            
+            <div class="d-flex align-items-center gap-3">
+                <span class="text-secondary small d-none d-md-inline">Generated: <strong>{{ report_timestamp }}</strong></span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container-fluid px-4 pb-5">
+        
+        <!-- Date ranges info -->
+        <div class="dashboard-card py-3 px-4 mb-4">
+            <div class="row align-items-center">
+                <div class="col-lg-3">
+                    <span class="text-secondary fw-semibold small uppercase"><i class="bi bi-calendar3 me-2"></i>Comparison Baselines</span>
+                </div>
+                <div class="col-lg-9">
+                    <div class="d-flex flex-wrap gap-3 mt-2 mt-lg-0 justify-content-lg-between">
+                        {% for period, range in periods.items() %}
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge-pill-outline bg-light">{{ period }}</span>
+                            <span class="small text-secondary">{{ range }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <div class="color-scheme-legend">
-            <h2>Colour Scheme</h2>
-            <table>
-                <tr><th class="color-box">Colour</th><th>Meaning</th></tr>
-                <tr><td class="color-box"></td><td>Change within &plusmn;10%</td></tr>
-                <tr><td class="color-box amber"></td><td>Negative change between -10% and -25%</td></tr>
-                <tr><td class="color-box red"></td><td>Negative change &gt; -25%</td></tr>
-                <tr><td class="color-box positive-moderate-green"></td><td>Positive change between +10% and +25%</td></tr>
-                <tr><td class="color-box positive-strong-green"></td><td>Positive change &gt; +25%</td></tr>
-            </table>
-        </div>
-    </div>
+        <!-- Interactive Dashboard Wrapper (hidden by default, shown by JS) -->
+        <div id="interactive-dashboard" style="display: none;">
 
-    {% for m_id, m_data in metrics_data.items() %}
-    <h2>{{ m_data.title }}</h2>
-    <table>
-        <tr>
-            <th>Property</th>
-            <th>Current</th>
-            <th>Last Week</th><th>Vs LW (%)</th>
-            <th>Last Month</th><th>Vs LM (%)</th>
-            <th>Last Year</th><th>Vs LY (%)</th>
-        </tr>
-        {% for prop in m_data.properties %}
-        <tr>
-            <td>{{ prop.name }}</td>
-            <td>{{ prop.cur }}{% if m_id == 'ctr' %}%{% endif %}</td>
-            <td>{{ prop.lw }}{% if m_id == 'ctr' %}%{% endif %}</td>
-            <td class="{{ prop.lw_class }}">{{ prop.lw_pct if prop.lw_pct is not none else 'N/A' }}{{ '%' if prop.lw_pct is not none }}</td>
-            <td>{{ prop.lm }}{% if m_id == 'ctr' %}%{% endif %}</td>
-            <td class="{{ prop.lm_class }}">{{ prop.lm_pct if prop.lm_pct is not none else 'N/A' }}{{ '%' if prop.lm_pct is not none }}</td>
-            <td>{{ prop.ly }}{% if m_id == 'ctr' %}%{% endif %}</td>
-            <td class="{{ prop.ly_class }}">{{ prop.ly_pct if prop.ly_pct is not none else 'N/A' }}{{ '%' if prop.ly_pct is not none }}</td>
-        </tr>
-        {% endfor %}
-    </table>
-    {% endfor %}
+        <!-- Canary Warning Box (Dynamic alerts based on performance drop) -->
+        <div id="canary-alerts-container" class="d-none">
+            <div class="canary-alert-banner shadow-sm">
+                <div class="d-flex align-items-start gap-3">
+                    <i class="bi bi-exclamation-triangle-fill fs-4 mt-1"></i>
+                    <div>
+                        <h5 class="fw-bold mb-1">Performance Canary Anomalies Detected</h5>
+                        <p class="mb-2 small">The following properties have dropped below acceptable thresholds relative to baseline periods. Immediate technical audit is recommended.</p>
+                        <div class="row g-2 mt-2" id="alerts-grid">
+                            <!-- Dynamic Warning Cards will be inserted here by JS -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Portfolio Health Summary Cards -->
+        <div class="row mb-4">
+            <!-- Card 1: Total Monitored -->
+            <div class="flip-card-container col-md-6 col-xl-3">
+                <div class="flip-card" id="card-total" onclick="toggleCardFlip('card-total')">
+                    <div class="flip-card-front dashboard-card kpi-card border-top border-primary" style="border-top-width: 4px !important;">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <span class="text-secondary small fw-semibold">Properties Monitored</span>
+                            <div class="bg-primary text-white rounded-circle p-1 d-flex align-items-center justify-content-center" style="width: 28px; height: 28px;">
+                                <i class="bi bi-globe small"></i>
+                            </div>
+                        </div>
+                        <div class="kpi-val">{{ portfolio_health.total }}</div>
+                        <p class="text-muted small mb-0 mt-2">Active GSC properties tracked <i class="bi bi-arrow-repeat ms-1 text-primary" style="font-size: 0.8rem;"></i></p>
+                    </div>
+                    <div class="flip-card-back border-top border-primary" style="border-top-width: 4px !important;">
+                        <div class="d-flex justify-content-between align-items-center pb-2 border-bottom border-light">
+                            <span class="text-secondary small fw-bold">Properties Directory</span>
+                            <i class="bi bi-arrow-repeat text-primary" style="font-size: 0.8rem;"></i>
+                        </div>
+                        <div class="property-scroll-list">
+                            {% for prop_name in portfolio_health.total_list %}
+                            <div class="small py-1 border-bottom border-light text-secondary">{{ prop_name }}</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Card 2: Critical Alerts -->
+            <div class="flip-card-container col-md-6 col-xl-3">
+                <div class="flip-card" id="card-critical" onclick="toggleCardFlip('card-critical')">
+                    <div class="flip-card-front dashboard-card kpi-card border-top border-danger" style="border-top-width: 4px !important; border-top-color: var(--danger-color) !important;">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <span class="text-secondary small fw-semibold">Critical Alerts</span>
+                            <div class="bg-danger text-white rounded-circle p-1 d-flex align-items-center justify-content-center" style="width: 28px; height: 28px;">
+                                <i class="bi bi-exclamation-octagon small"></i>
+                            </div>
+                        </div>
+                        <div class="kpi-val text-danger">{{ portfolio_health.critical }}</div>
+                        <p class="text-muted small mb-0 mt-2">Sites with severe WoW/MoM declines <i class="bi bi-arrow-repeat ms-1 text-danger" style="font-size: 0.8rem;"></i></p>
+                    </div>
+                    <div class="flip-card-back border-top border-danger" style="border-top-width: 4px !important; border-top-color: var(--danger-color) !important;">
+                        <div class="d-flex justify-content-between align-items-center pb-2 border-bottom border-light">
+                            <span class="text-danger small fw-bold">Critical Anomalies</span>
+                            <i class="bi bi-arrow-repeat text-danger" style="font-size: 0.8rem;"></i>
+                        </div>
+                        <div class="property-scroll-list">
+                            {% if portfolio_health.critical_list %}
+                                {% for prop_name in portfolio_health.critical_list %}
+                                <div class="small py-1 border-bottom border-light text-danger fw-medium">{{ prop_name }}</div>
+                                {% endfor %}
+                            {% else %}
+                                <div class="small text-muted py-2">No critical drops detected.</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Card 3: Warning Alerts -->
+            <div class="flip-card-container col-md-6 col-xl-3">
+                <div class="flip-card" id="card-warning" onclick="toggleCardFlip('card-warning')">
+                    <div class="flip-card-front dashboard-card kpi-card border-top border-warning" style="border-top-width: 4px !important; border-top-color: var(--warning-color) !important;">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <span class="text-secondary small fw-semibold">Warning Alerts</span>
+                            <div class="bg-warning text-dark rounded-circle p-1 d-flex align-items-center justify-content-center" style="width: 28px; height: 28px;">
+                                <i class="bi bi-exclamation-triangle small"></i>
+                            </div>
+                        </div>
+                        <div class="kpi-val text-warning">{{ portfolio_health.warning }}</div>
+                        <p class="text-muted small mb-0 mt-2">Sites with moderate performance drops <i class="bi bi-arrow-repeat ms-1 text-warning" style="font-size: 0.8rem;"></i></p>
+                    </div>
+                    <div class="flip-card-back border-top border-warning" style="border-top-width: 4px !important; border-top-color: var(--warning-color) !important;">
+                        <div class="d-flex justify-content-between align-items-center pb-2 border-bottom border-light">
+                            <span class="text-warning small fw-bold">Warnings Directory</span>
+                            <i class="bi bi-arrow-repeat text-warning" style="font-size: 0.8rem;"></i>
+                        </div>
+                        <div class="property-scroll-list">
+                            {% if portfolio_health.warning_list %}
+                                {% for prop_name in portfolio_health.warning_list %}
+                                <div class="small py-1 border-bottom border-light text-warning fw-medium">{{ prop_name }}</div>
+                                {% endfor %}
+                            {% else %}
+                                <div class="small text-muted py-2">No warning alerts active.</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Card 4: Stable / Improving -->
+            <div class="flip-card-container col-md-6 col-xl-3">
+                <div class="flip-card" id="card-stable" onclick="toggleCardFlip('card-stable')">
+                    <div class="flip-card-front dashboard-card kpi-card border-top border-success" style="border-top-width: 4px !important; border-top-color: var(--success-color) !important;">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <span class="text-secondary small fw-semibold">Stable or Improving</span>
+                            <div class="bg-success text-white rounded-circle p-1 d-flex align-items-center justify-content-center" style="width: 28px; height: 28px;">
+                                <i class="bi bi-check-circle small"></i>
+                            </div>
+                        </div>
+                        <div class="kpi-val text-success">{{ portfolio_health.stable }}</div>
+                        <p class="text-muted small mb-0 mt-2">Sites maintaining or growing traffic <i class="bi bi-arrow-repeat ms-1 text-success" style="font-size: 0.8rem;"></i></p>
+                    </div>
+                    <div class="flip-card-back border-top border-success" style="border-top-width: 4px !important; border-top-color: var(--success-color) !important;">
+                        <div class="d-flex justify-content-between align-items-center pb-2 border-bottom border-light">
+                            <span class="text-success small fw-bold">Stable & Growth List</span>
+                            <i class="bi bi-arrow-repeat text-success" style="font-size: 0.8rem;"></i>
+                        </div>
+                        <div class="property-scroll-list">
+                            {% if portfolio_health.stable_list %}
+                                {% for prop_name in portfolio_health.stable_list %}
+                                <div class="small py-1 border-bottom border-light text-success fw-medium">{{ prop_name }}</div>
+                                {% endfor %}
+                            {% else %}
+                                <div class="small text-muted py-2">All sites are experiencing drops.</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <ul class="nav nav-pills mb-4 gap-2" id="dashboardTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="overview-tab" data-bs-toggle="pill" data-bs-target="#overview" type="button" role="tab" aria-selected="true">
+                    <i class="bi bi-speedometer2 me-2"></i>Summary View
+                </button>
+            </li>
+            {% for m_id, m_data in metrics_data.items() %}
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="{{ m_id }}-tab" data-bs-toggle="pill" data-bs-target="#tab-{{ m_id }}" type="button" role="tab" aria-selected="false" onclick="renderMetricChart('{{ m_id }}')">
+                    <i class="bi {% if m_id == 'clicks' %}bi-mouse2{% elif m_id == 'impressions' %}bi-eye{% elif m_id == 'ctr' %}bi-percent{% else %}bi-graph-up-arrow{% endif %} me-2"></i>{{ m_data.title }}
+                </button>
+            </li>
+            {% endfor %}
+        </ul>
+
+        <!-- Tab Panes -->
+        <div class="tab-content" id="dashboardTabContent">
+            
+            <!-- Overview Dashboard -->
+            <div class="tab-pane fade show active" id="overview" role="tabpanel">
+                <div class="row">
+                    <!-- Dynamic Summary Visualisations -->
+                    <div class="col-lg-6">
+                        <div class="dashboard-card">
+                            <h5 class="fw-bold mb-3"><i class="bi bi-bar-chart-line-fill me-2 text-primary"></i>Clicks Baseline Comparison</h5>
+                            <div style="height: 520px; position: relative;">
+                                <canvas id="overviewClicksChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-6">
+                        <div class="dashboard-card">
+                            <h5 class="fw-bold mb-3"><i class="bi bi-bar-chart-line-fill me-2 text-info"></i>Impressions Baseline Comparison</h5>
+                            <div style="height: 520px; position: relative;">
+                                <canvas id="overviewImpressionsChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-6">
+                        <div class="dashboard-card">
+                            <h5 class="fw-bold mb-3"><i class="bi bi-bar-chart-line-fill me-2 text-warning"></i>CTR Baseline Comparison</h5>
+                            <div style="height: 520px; position: relative;">
+                                <canvas id="overviewCtrChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-6">
+                        <div class="dashboard-card">
+                            <h5 class="fw-bold mb-3"><i class="bi bi-bar-chart-line-fill me-2 text-success"></i>Average Position Baseline Comparison</h5>
+                            <div style="height: 520px; position: relative;">
+                                <canvas id="overviewPositionChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Group Overview Table -->
+                <div class="dashboard-card">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-3">
+                        <div class="d-flex align-items-center gap-2">
+                            <h5 class="fw-bold mb-0 me-3"><i class="bi bi-table me-2"></i>Portfolio Monitoring Directory</h5>
+                            
+                            <!-- Table View Switches -->
+                            <div class="btn-group btn-group-sm" role="group" aria-label="Table dataset selector">
+                                <button type="button" class="btn btn-outline-primary active" id="btn-all" onclick="changeOverviewMode('all')">WoW Summary</button>
+                                <button type="button" class="btn btn-outline-primary" id="btn-clicks" onclick="changeOverviewMode('clicks')">Clicks</button>
+                                <button type="button" class="btn btn-outline-primary" id="btn-impressions" onclick="changeOverviewMode('impressions')">Impressions</button>
+                                <button type="button" class="btn btn-outline-primary" id="btn-ctr" onclick="changeOverviewMode('ctr')">CTR</button>
+                                <button type="button" class="btn btn-outline-primary" id="btn-position" onclick="changeOverviewMode('position')">Avg Position</button>
+                            </div>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <input type="text" id="overviewSearchInput" class="form-control form-control-sm" placeholder="Search properties..." style="width: 250px;" onkeyup="filterOverviewTable()">
+                        </div>
+                    </div>
+                    
+                    <div class="table-responsive">
+                        <table class="table custom-table table-hover" id="overviewTable">
+                            <thead>
+                                <tr>
+                                    <th onclick="sortOverviewTable(0)">Property <span class="sort-icon"></span></th>
+                                    <th onclick="sortOverviewTable(1)" class="text-end">Clicks (Cur) <span class="sort-icon"></span></th>
+                                    <th onclick="sortOverviewTable(2)" class="text-end">WoW % <span class="sort-icon"></span></th>
+                                    <th onclick="sortOverviewTable(3)" class="text-end">Impressions (Cur) <span class="sort-icon"></span></th>
+                                    <th onclick="sortOverviewTable(4)" class="text-end">WoW % <span class="sort-icon"></span></th>
+                                    <th onclick="sortOverviewTable(5)" class="text-end">CTR (Cur) <span class="sort-icon"></span></th>
+                                    <th onclick="sortOverviewTable(6)" class="text-end">WoW % <span class="sort-icon"></span></th>
+                                    <th onclick="sortOverviewTable(7)" class="text-end">Position (Cur) <span class="sort-icon"></span></th>
+                                    <th onclick="sortOverviewTable(8)" class="text-end">WoW % <span class="sort-icon"></span></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Built dynamically via JavaScript for clean data binding -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Individual Metric Tabs (Rendered dynamically using templates) -->
+            {% for m_id, m_data in metrics_data.items() %}
+            <div class="tab-pane fade" id="tab-{{ m_id }}" role="tabpanel">
+                <div class="row">
+                    <!-- Controls Column -->
+                    <div class="col-lg-3">
+                        <div class="dashboard-card">
+                            <h6 class="fw-bold mb-3"><i class="bi bi-sliders me-2"></i>Visual Filters</h6>
+                            
+                            <!-- Toggle properties checkbox list -->
+                            <div class="mb-4">
+                                <label class="form-label small text-secondary fw-semibold">Show Properties</label>
+                                <div class="d-flex gap-2 mb-2">
+                                    <button class="btn btn-outline-secondary btn-xs py-1 px-2 text-xs" style="font-size:0.75rem;" onclick="toggleAllProperties('{{ m_id }}', true)">All</button>
+                                    <button class="btn btn-outline-secondary btn-xs py-1 px-2 text-xs" style="font-size:0.75rem;" onclick="toggleAllProperties('{{ m_id }}', false)">None</button>
+                                </div>
+                                <div class="property-checkbox-list" id="{{ m_id }}-checkboxes">
+                                    <!-- Populated dynamically -->
+                                </div>
+                            </div>
+
+                            <!-- Options -->
+                            <div class="mb-3">
+                                <label class="form-label small text-secondary fw-semibold">Chart Scale</label>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="{{ m_id }}-logScale" onchange="toggleLogScale('{{ m_id }}')">
+                                    <label class="form-check-label small" for="{{ m_id }}-logScale">Logarithmic Axis</label>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-2">
+                                <label class="form-label small text-secondary fw-semibold">Visual Layout</label>
+                                <select class="form-select form-select-sm" id="{{ m_id }}-chartType" onchange="changeChartType('{{ m_id }}')">
+                                    <option value="bar">Grouped Bar Chart</option>
+                                    <option value="line">Trend Line Comparison</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Visualization Column -->
+                    <div class="col-lg-9">
+                        <div class="dashboard-card">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h5 class="fw-bold mb-0">{{ m_data.title }} Baseline Metric Comparison</h5>
+                                <span class="badge bg-indigo text-xs py-1" style="font-size:0.75rem;">Interactive View</span>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="{{ m_id }}-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Detail Directory Table -->
+                <div class="dashboard-card">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-3">
+                        <div class="d-flex align-items-center gap-2">
+                            <h5 class="fw-bold mb-0 me-3"><i class="bi bi-table me-2"></i>{{ m_data.title }} Directory</h5>
+                            
+                            <!-- Table View Switches -->
+                            <div class="btn-group btn-group-sm" role="group" aria-label="Table dataset selector">
+                                <button type="button" class="btn btn-outline-primary" onclick="switchToTab('overview')">WoW Summary</button>
+                                <button type="button" class="btn btn-outline-primary {% if m_id == 'clicks' %}active{% endif %}" onclick="switchToTab('clicks')">Clicks</button>
+                                <button type="button" class="btn btn-outline-primary {% if m_id == 'impressions' %}active{% endif %}" onclick="switchToTab('impressions')">Impressions</button>
+                                <button type="button" class="btn btn-outline-primary {% if m_id == 'ctr' %}active{% endif %}" onclick="switchToTab('ctr')">CTR</button>
+                                <button type="button" class="btn btn-outline-primary {% if m_id == 'position' %}active{% endif %}" onclick="switchToTab('position')">Avg Position</button>
+                            </div>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <input type="text" id="{{ m_id }}-searchInput" class="form-control form-control-sm" placeholder="Search properties..." style="width: 250px;" onkeyup="filterMetricTable('{{ m_id }}')">
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table custom-table table-hover" id="{{ m_id }}-table">
+                            <thead>
+                                <tr>
+                                    <th onclick="sortMetricTable('{{ m_id }}', 0)">Property <span class="sort-icon"></span></th>
+                                    <th onclick="sortMetricTable('{{ m_id }}', 1)" class="text-end">Current <span class="sort-icon"></span></th>
+                                    <th onclick="sortMetricTable('{{ m_id }}', 2)" class="text-end">Last Week <span class="sort-icon"></span></th>
+                                    <th onclick="sortMetricTable('{{ m_id }}', 3)" class="text-end">Vs WoW % <span class="sort-icon"></span></th>
+                                    <th onclick="sortMetricTable('{{ m_id }}', 4)" class="text-end">Last Month <span class="sort-icon"></span></th>
+                                    <th onclick="sortMetricTable('{{ m_id }}', 5)" class="text-end">Vs MoM % <span class="sort-icon"></span></th>
+                                    <th onclick="sortMetricTable('{{ m_id }}', 6)" class="text-end">Last Year <span class="sort-icon"></span></th>
+                                    <th onclick="sortMetricTable('{{ m_id }}', 7)" class="text-end">Vs YoY % <span class="sort-icon"></span></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for prop in m_data.properties %}
+                                <tr>
+                                    <td class="fw-semibold">{{ prop.name }}</td>
+                                    <td class="text-end fw-medium">{{ prop.cur }}{% if m_id == 'ctr' %}%{% endif %}</td>
+                                    <td class="text-end text-secondary">{{ prop.lw }}{% if m_id == 'ctr' %}%{% endif %}</td>
+                                    <td class="text-end"><span class="status-badge {{ prop.lw_class }}">{{ prop.lw_pct if prop.lw_pct is not none else 'N/A' }}{{ '%' if prop.lw_pct is not none }}</span></td>
+                                    <td class="text-end text-secondary">{{ prop.lm }}{% if m_id == 'ctr' %}%{% endif %}</td>
+                                    <td class="text-end"><span class="status-badge {{ prop.lm_class }}">{{ prop.lm_pct if prop.lm_pct is not none else 'N/A' }}{{ '%' if prop.lm_pct is not none }}</span></td>
+                                    <td class="text-end text-secondary">{{ prop.ly }}{% if m_id == 'ctr' %}%{% endif %}</td>
+                                    <td class="text-end"><span class="status-badge {{ prop.ly_class }}">{{ prop.ly_pct if prop.ly_pct is not none else 'N/A' }}{{ '%' if prop.ly_pct is not none }}</span></td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+
+        </div>
+        </div> <!-- End of interactive-dashboard -->
+
+        <!-- Static View (rendered by default, hidden when JS runs successfully) -->
+        <div id="static-tables">
+            <div class="alert alert-warning mb-4" role="alert">
+                <h5 class="alert-heading fw-bold"><i class="bi bi-exclamation-triangle-fill me-2"></i>Static View Enabled</h5>
+                <p class="mb-0">You are viewing a simplified, static version of this monitoring report. All metric comparison tables are displayed below for compatibility when JavaScript is disabled.</p>
+            </div>
+            
+            <div class="static-top-container">
+                <div>
+                    <h5 class="fw-bold mb-2">Time Periods</h5>
+                    <table class="static-period-table static-table">
+                        <thead>
+                            <tr><th>Period</th><th>Date Range</th></tr>
+                        </thead>
+                        <tbody>
+                            {% for period, range in periods.items() %}
+                            <tr><td class="fw-semibold">{{ period }}</td><td>{{ range }}</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="static-color-scheme-legend">
+                    <h5 class="fw-bold mb-2">Colour Scheme</h5>
+                    <table class="static-table" style="border: none;">
+                        <thead>
+                            <tr><th class="static-color-box" style="background-color: transparent;">Colour</th><th>Meaning</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td class="static-color-box" style="background-color: transparent;"></td><td>Change within &plusmn;10%</td></tr>
+                            <tr><td class="static-color-box" style="background-color: #fff3cd;"></td><td>Negative change between -10% and -25%</td></tr>
+                            <tr><td class="static-color-box" style="background-color: #f8d7da;"></td><td>Negative change &gt; -25%</td></tr>
+                            <tr><td class="static-color-box" style="background-color: #a3e0a3;"></td><td>Positive change between +10% and +25%</td></tr>
+                            <tr><td class="static-color-box" style="background-color: #6aaa6a;"></td><td>Positive change &gt; +25%</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            {% for m_id, m_data in metrics_data.items() %}
+            <h4 class="fw-bold mt-4 mb-3">{{ m_data.title }}</h4>
+            <table class="static-table">
+                <thead>
+                    <tr>
+                        <th>Property</th>
+                        <th>Current</th>
+                        <th>Last Week</th><th>Vs LW (%)</th>
+                        <th>Last Month</th><th>Vs LM (%)</th>
+                        <th>Last Year</th><th>Vs LY (%)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for prop in m_data.properties %}
+                    <tr>
+                        <td class="fw-semibold">{{ prop.name }}</td>
+                        <td>{{ prop.cur }}{% if m_id == 'ctr' %}%{% endif %}</td>
+                        <td>{{ prop.lw }}{% if m_id == 'ctr' %}%{% endif %}</td>
+                        <td class="{{ prop.lw_class }}">{{ prop.lw_pct if prop.lw_pct is not none else 'N/A' }}{{ '%' if prop.lw_pct is not none }}</td>
+                        <td>{{ prop.lm }}{% if m_id == 'ctr' %}%{% endif %}</td>
+                        <td class="{{ prop.lm_class }}">{{ prop.lm_pct if prop.lm_pct is not none else 'N/A' }}{{ '%' if prop.lm_pct is not none }}</td>
+                        <td>{{ prop.ly }}{% if m_id == 'ctr' %}%{% endif %}</td>
+                        <td class="{{ prop.ly_class }}">{{ prop.ly_pct if prop.ly_pct is not none else 'N/A' }}{{ '%' if prop.ly_pct is not none }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% endfor %}
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer mt-auto py-3 border-top border-light mt-5" style="background-color: var(--bg-card); color: var(--text-secondary); transition: all 0.3s ease;">
+        <div class="container text-center">
+            <span class="small">Report generated on {{ report_timestamp }}. <a href="https://github.com/liamdelahunty/gsc-exporter" target="_blank" style="color: rgb(99, 102, 241); text-decoration: none;">gsc-exporter</a></span>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Dashboard Operations JavaScript -->
+    <script>
+        // Card Flip Toggler
+        function toggleCardFlip(cardId) {
+            const card = document.getElementById(cardId);
+            if (card) {
+                card.classList.toggle('flipped');
+            }
+        }
+
+        // Parse the metrics payload sent from python
+        const metricsPayload = {{ metrics_data_json|safe }};
+        
+        // Active Chart instances mapping
+        const activeCharts = {};
+        
+        // Property visibilities filter
+        const visibleProperties = {};
+
+        // Colour accessors for Chart.js depending on layout settings
+        function getTickColor() {
+            return '#475569';
+        }
+
+        // Colour accessors for Chart.js depending on layout settings
+        function getGridColor() {
+            return '#e2e8f0';
+        }
+
+        // Bootstrap loader
+        window.addEventListener('DOMContentLoaded', () => {
+            // Show interactive dashboard and hide static tables if JS runs successfully
+            const dashboard = document.getElementById('interactive-dashboard');
+            const staticTables = document.getElementById('static-tables');
+            if (dashboard) dashboard.style.display = 'block';
+            if (staticTables) staticTables.style.display = 'none';
+            
+            // Initialize structures
+            Object.keys(metricsPayload).forEach(mId => {
+                visibleProperties[mId] = {};
+                metricsPayload[mId].properties.forEach(p => {
+                    visibleProperties[mId][p.name] = true;
+                });
+            });
+
+            // Build dynamic sections
+            generateCanaryAlerts();
+            renderOverviewTable();
+            renderOverviewCharts();
+            
+            // Setup checklist controllers
+            Object.keys(metricsPayload).forEach(mId => {
+                populatePropertyFilters(mId);
+            });
+        });
+
+        // Overview Baseline Charts
+        function renderOverviewCharts() {
+            const Clicks = metricsPayload['clicks'].properties;
+            const Impressions = metricsPayload['impressions'].properties;
+            const Ctr = metricsPayload['ctr'].properties;
+            const Position = metricsPayload['position'].properties;
+            
+            const labels = Clicks.map(c => c.name);
+            
+            const createDataset = (label, data, bg, border) => ({
+                label: label,
+                data: data,
+                backgroundColor: bg,
+                borderColor: border,
+                borderWidth: 1
+            });
+
+            // Overview Clicks
+            const ctxClicks = document.getElementById('overviewClicksChart').getContext('2d');
+            activeCharts['overview_clicks'] = new Chart(ctxClicks, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        createDataset('Current', Clicks.map(c => c.cur_raw), 'rgba(99, 102, 241, 0.85)', 'rgb(99, 102, 241)'),
+                        createDataset('Last Week', Clicks.map(c => c.lw_raw), 'rgba(56, 189, 248, 0.8)', 'rgb(56, 189, 248)'),
+                        createDataset('Last Month', Clicks.map(c => c.lm_raw), 'rgba(251, 191, 36, 0.8)', 'rgb(251, 191, 36)'),
+                        createDataset('Last Year', Clicks.map(c => c.ly_raw), 'rgba(244, 63, 94, 0.8)', 'rgb(244, 63, 94)')
+                    ]
+                },
+                options: getOverviewChartOptions('clicks')
+            });
+
+            // Overview Impressions
+            const ctxImpressions = document.getElementById('overviewImpressionsChart').getContext('2d');
+            activeCharts['overview_impressions'] = new Chart(ctxImpressions, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        createDataset('Current', Impressions.map(i => i.cur_raw), 'rgba(99, 102, 241, 0.85)', 'rgb(99, 102, 241)'),
+                        createDataset('Last Week', Impressions.map(i => i.lw_raw), 'rgba(56, 189, 248, 0.8)', 'rgb(56, 189, 248)'),
+                        createDataset('Last Month', Impressions.map(i => i.lm_raw), 'rgba(251, 191, 36, 0.8)', 'rgb(251, 191, 36)'),
+                        createDataset('Last Year', Impressions.map(i => i.ly_raw), 'rgba(244, 63, 94, 0.8)', 'rgb(244, 63, 94)')
+                    ]
+                },
+                options: getOverviewChartOptions('impressions')
+            });
+
+            // Overview CTR
+            const ctxCtr = document.getElementById('overviewCtrChart').getContext('2d');
+            activeCharts['overview_ctr'] = new Chart(ctxCtr, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        createDataset('Current', Ctr.map(c => c.cur_raw), 'rgba(99, 102, 241, 0.85)', 'rgb(99, 102, 241)'),
+                        createDataset('Last Week', Ctr.map(c => c.lw_raw), 'rgba(56, 189, 248, 0.8)', 'rgb(56, 189, 248)'),
+                        createDataset('Last Month', Ctr.map(c => c.lm_raw), 'rgba(251, 191, 36, 0.8)', 'rgb(251, 191, 36)'),
+                        createDataset('Last Year', Ctr.map(c => c.ly_raw), 'rgba(244, 63, 94, 0.8)', 'rgb(244, 63, 94)')
+                    ]
+                },
+                options: getOverviewChartOptions('ctr')
+            });
+
+            // Overview Position
+            const ctxPosition = document.getElementById('overviewPositionChart').getContext('2d');
+            activeCharts['overview_position'] = new Chart(ctxPosition, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        createDataset('Current', Position.map(p => p.cur_raw), 'rgba(99, 102, 241, 0.85)', 'rgb(99, 102, 241)'),
+                        createDataset('Last Week', Position.map(p => p.lw_raw), 'rgba(56, 189, 248, 0.8)', 'rgb(56, 189, 248)'),
+                        createDataset('Last Month', Position.map(p => p.lm_raw), 'rgba(251, 191, 36, 0.8)', 'rgb(251, 191, 36)'),
+                        createDataset('Last Year', Position.map(p => p.ly_raw), 'rgba(244, 63, 94, 0.8)', 'rgb(244, 63, 94)')
+                    ]
+                },
+                options: getOverviewChartOptions('position')
+            });
+        }
+
+        function getOverviewChartOptions(mId) {
+            return {
+                responsive: true,
+                maintainAspectRatio: false,
+                indexAxis: 'y', // Horizontal bars are much cleaner when there are many properties
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { color: getTickColor(), font: { family: 'Inter', size: 11 } }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = ` ${context.dataset.label || ''}: `;
+                                let val = context.raw;
+                                if (mId === 'ctr') {
+                                    label += val.toFixed(2) + '%';
+                                } else if (mId === 'position') {
+                                    label += val.toFixed(2);
+                                } else {
+                                    label += val.toLocaleString();
+                                }
+                                return label;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: { color: getGridColor() },
+                        ticks: { 
+                            color: getTickColor(), 
+                            font: { family: 'Inter', size: 10 },
+                            callback: function(value) {
+                                if (mId === 'ctr') return value + '%';
+                                return value.toLocaleString();
+                            }
+                        }
+                    },
+                    y: {
+                        grid: { display: false },
+                        ticks: { color: getTickColor(), font: { family: 'Inter', size: 11, weight: 'bold' } }
+                    }
+                }
+            };
+        }
+
+        // Automatic Canary Warnings Alert Logic
+        function generateCanaryAlerts() {
+            const alerts = [];
+            const clicks = metricsPayload['clicks'].properties;
+            const impressions = metricsPayload['impressions'].properties;
+            const position = metricsPayload['position'].properties;
+            
+            // Check WoW declines
+            clicks.forEach((c, idx) => {
+                const name = c.name;
+                const imp = impressions[idx];
+                const pos = position[idx];
+                
+                // Alert conditions: Clicks drops > 15% OR Impressions drops > 25% OR Avg Position worsens (increases) > 20%
+                if (c.lw_pct !== null && c.lw_pct < -15.0) {
+                    alerts.push({
+                        type: 'danger',
+                        propName: name,
+                        metric: 'Clicks',
+                        change: c.lw_pct,
+                        period: 'WoW',
+                        cur: c.cur,
+                        prev: c.lw
+                    });
+                } else if (c.lm_pct !== null && c.lm_pct < -20.0) {
+                    alerts.push({
+                        type: 'warning',
+                        propName: name,
+                        metric: 'Clicks',
+                        change: c.lm_pct,
+                        period: 'MoM',
+                        cur: c.cur,
+                        prev: c.lm
+                    });
+                }
+                
+                if (imp.lw_pct !== null && imp.lw_pct < -25.0) {
+                    alerts.push({
+                        type: 'danger',
+                        propName: name,
+                        metric: 'Impressions',
+                        change: imp.lw_pct,
+                        period: 'WoW',
+                        cur: imp.cur,
+                        prev: imp.lw
+                    });
+                }
+                
+                if (pos.lw_pct !== null && pos.lw_pct > 20.0) { // average position worsens (higher number is worse)
+                    alerts.push({
+                        type: 'warning',
+                        propName: name,
+                        metric: 'Average Position',
+                        change: -pos.lw_pct, // show negative drop in ranking power
+                        period: 'WoW',
+                        cur: pos.cur,
+                        prev: pos.lw
+                    });
+                }
+            });
+            
+            const container = document.getElementById('canary-alerts-container');
+            const grid = document.getElementById('alerts-grid');
+            
+            if (alerts.length > 0) {
+                container.classList.remove('d-none');
+                grid.innerHTML = '';
+                
+                // Limit warnings to top 6 most severe drops to prevent cluttering
+                alerts.sort((a, b) => a.change - b.change);
+                const displayAlerts = alerts.slice(0, 6);
+                
+                displayAlerts.forEach(a => {
+                    const card = document.createElement('div');
+                    card.className = 'col-md-6 col-xl-4';
+                    
+                    const badgeClass = a.type === 'danger' ? 'bg-danger text-white' : 'bg-warning text-dark';
+                    const icon = a.type === 'danger' ? 'bi-arrow-down-circle-fill' : 'bi-exclamation-circle-fill';
+                    
+                    card.innerHTML = `
+                        <div class="p-3 rounded-3 bg-white border border-light shadow-sm d-flex flex-column h-100" style="min-height: 100px;">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <span class="fw-bold text-dark small text-truncate" style="max-width: 170px;">${a.propName}</span>
+                                <span class="badge ${badgeClass} small py-1" style="font-size:0.75rem;">${a.period}</span>
+                            </div>
+                            <div class="d-flex align-items-center gap-2 mt-auto">
+                                <span class="text-danger fw-bold d-flex align-items-center gap-1">
+                                    <i class="bi ${icon}"></i> ${a.change.toFixed(1)}%
+                                </span>
+                                <span class="text-secondary small">${a.metric}: ${a.prev} &rarr; ${a.cur}</span>
+                            </div>
+                        </div>
+                    `;
+                    grid.appendChild(card);
+                });
+            } else {
+                container.classList.add('d-none');
+            }
+        }
+
+        let currentOverviewMode = 'all';
+
+        // Render the Directory overview index
+        function renderOverviewTable() {
+            const table = document.getElementById('overviewTable');
+            const thead = table.querySelector('thead tr');
+            const tbody = table.querySelector('tbody');
+            
+            tbody.innerHTML = '';
+            
+            const clicks = metricsPayload['clicks'].properties;
+            const impressions = metricsPayload['impressions'].properties;
+            const ctr = metricsPayload['ctr'].properties;
+            const position = metricsPayload['position'].properties;
+            
+            if (currentOverviewMode === 'all') {
+                // Header
+                thead.innerHTML = `
+                    <th onclick="sortOverviewTable(0)">Property <span class="sort-icon"></span></th>
+                    <th onclick="sortOverviewTable(1)" class="text-end">Clicks (Cur) <span class="sort-icon"></span></th>
+                    <th onclick="sortOverviewTable(2)" class="text-end">WoW % <span class="sort-icon"></span></th>
+                    <th onclick="sortOverviewTable(3)" class="text-end">Impressions (Cur) <span class="sort-icon"></span></th>
+                    <th onclick="sortOverviewTable(4)" class="text-end">WoW % <span class="sort-icon"></span></th>
+                    <th onclick="sortOverviewTable(5)" class="text-end">CTR (Cur) <span class="sort-icon"></span></th>
+                    <th onclick="sortOverviewTable(6)" class="text-end">WoW % <span class="sort-icon"></span></th>
+                    <th onclick="sortOverviewTable(7)" class="text-end">Position (Cur) <span class="sort-icon"></span></th>
+                    <th onclick="sortOverviewTable(8)" class="text-end">WoW % <span class="sort-icon"></span></th>
+                `;
+                
+                clicks.forEach((c, idx) => {
+                    const name = c.name;
+                    const imp = impressions[idx];
+                    const ct = ctr[idx];
+                    const pos = position[idx];
+                    
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td class="fw-semibold text-primary-hover">${name}</td>
+                        <td class="text-end fw-medium">${c.cur}</td>
+                        <td class="text-end"><span class="status-badge ${c.lw_class}">${c.lw_pct !== null ? c.lw_pct + '%' : 'N/A'}</span></td>
+                        <td class="text-end text-secondary">${imp.cur}</td>
+                        <td class="text-end"><span class="status-badge ${imp.lw_class}">${imp.lw_pct !== null ? imp.lw_pct + '%' : 'N/A'}</span></td>
+                        <td class="text-end text-secondary">${ct.cur}%</td>
+                        <td class="text-end"><span class="status-badge ${ct.lw_class}">${ct.lw_pct !== null ? ct.lw_pct + '%' : 'N/A'}</span></td>
+                        <td class="text-end text-secondary">${pos.cur}</td>
+                        <td class="text-end"><span class="status-badge ${pos.lw_class}">${pos.lw_pct !== null ? pos.lw_pct + '%' : 'N/A'}</span></td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } else {
+                // Specific metric headers
+                thead.innerHTML = `
+                    <th onclick="sortOverviewTable(0)">Property <span class="sort-icon"></span></th>
+                    <th onclick="sortOverviewTable(1)" class="text-end">Current <span class="sort-icon"></span></th>
+                    <th onclick="sortOverviewTable(2)" class="text-end">Last Week <span class="sort-icon"></span></th>
+                    <th onclick="sortOverviewTable(3)" class="text-end">Vs WoW % <span class="sort-icon"></span></th>
+                    <th onclick="sortOverviewTable(4)" class="text-end">Last Month <span class="sort-icon"></span></th>
+                    <th onclick="sortOverviewTable(5)" class="text-end">Vs MoM % <span class="sort-icon"></span></th>
+                    <th onclick="sortOverviewTable(6)" class="text-end">Last Year <span class="sort-icon"></span></th>
+                    <th onclick="sortOverviewTable(7)" class="text-end">Vs YoY % <span class="sort-icon"></span></th>
+                `;
+                
+                const props = metricsPayload[currentOverviewMode].properties;
+                props.forEach(p => {
+                    const tr = document.createElement('tr');
+                    const suffix = currentOverviewMode === 'ctr' ? '%' : '';
+                    tr.innerHTML = `
+                        <td class="fw-semibold text-primary-hover">${p.name}</td>
+                        <td class="text-end fw-medium">${p.cur}${suffix}</td>
+                        <td class="text-end text-secondary">${p.lw}${suffix}</td>
+                        <td class="text-end"><span class="status-badge ${p.lw_class}">${p.lw_pct !== null ? p.lw_pct + '%' : 'N/A'}</span></td>
+                        <td class="text-end text-secondary">${p.lm}${suffix}</td>
+                        <td class="text-end"><span class="status-badge ${p.lm_class}">${p.lm_pct !== null ? p.lm_pct + '%' : 'N/A'}</span></td>
+                        <td class="text-end text-secondary">${p.ly}${suffix}</td>
+                        <td class="text-end"><span class="status-badge ${p.ly_class}">${p.ly_pct !== null ? p.ly_pct + '%' : 'N/A'}</span></td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+            
+            // Reapply sort icons to the header DOM
+            const ths = table.querySelectorAll('thead th');
+            ths.forEach((th, idx) => {
+                th.classList.remove('sort-asc', 'sort-desc');
+                if (idx === overviewSortCol) {
+                    th.classList.add(overviewSortAsc ? 'sort-asc' : 'sort-desc');
+                }
+            });
+        }
+
+        function changeOverviewMode(mode) {
+            currentOverviewMode = mode;
+            
+            // Update button active states
+            const buttons = ['all', 'clicks', 'impressions', 'ctr', 'position'];
+            buttons.forEach(b => {
+                const btn = document.getElementById(`btn-${b}`);
+                if (btn) {
+                    if (b === mode) {
+                        btn.classList.add('active');
+                    } else {
+                        btn.classList.remove('active');
+                    }
+                }
+            });
+            
+            overviewSortCol = -1;
+            renderOverviewTable();
+            filterOverviewTable(); // maintain active search filters if any
+        }
+
+        function switchToTab(metricId) {
+            if (metricId === 'overview') {
+                const tab = document.getElementById('overview-tab');
+                if (tab) tab.click();
+            } else {
+                const tab = document.getElementById(`${metricId}-tab`);
+                if (tab) tab.click();
+            }
+        }
+
+        // Checklist filter options population
+        function populatePropertyFilters(mId) {
+            const container = document.getElementById(`${mId}-checkboxes`);
+            container.innerHTML = '';
+            
+            metricsPayload[mId].properties.forEach(p => {
+                const div = document.createElement('div');
+                div.className = 'form-check mb-1';
+                
+                div.innerHTML = `
+                    <input class="form-check-input" type="checkbox" id="${mId}-filter-${p.name}" checked onchange="handlePropertyFilterChange('${mId}', '${p.name}')">
+                    <label class="form-check-label small text-secondary-hover fw-medium cursor-pointer" for="${mId}-filter-${p.name}">${p.name}</label>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function handlePropertyFilterChange(mId, propName) {
+            const checked = document.getElementById(`${mId}-filter-${propName}`).checked;
+            visibleProperties[mId][propName] = checked;
+            updateMetricChart(mId);
+        }
+
+        function toggleAllProperties(mId, state) {
+            metricsPayload[mId].properties.forEach(p => {
+                document.getElementById(`${mId}-filter-${p.name}`).checked = state;
+                visibleProperties[mId][p.name] = state;
+            });
+            updateMetricChart(mId);
+        }
+
+        // Chart render controllers
+        function renderMetricChart(mId) {
+            // Wait slightly for bootstrap layout calculations to draw on active canvas dimensions
+            setTimeout(() => {
+                if (activeCharts[mId]) {
+                    updateMetricChart(mId);
+                    return;
+                }
+                
+                const ctx = document.getElementById(`${mId}-chart`).getContext('2d');
+                const scaleType = document.getElementById(`${mId}-logScale`).checked ? 'logarithmic' : 'linear';
+                const chartType = document.getElementById(`${mId}-chartType`).value;
+                
+                const chartData = getMetricChartData(mId);
+                
+                activeCharts[mId] = new Chart(ctx, {
+                    type: chartType,
+                    data: chartData,
+                    options: getMetricChartOptions(mId, scaleType)
+                });
+            }, 150);
+        }
+
+        function updateMetricChart(mId) {
+            const chart = activeCharts[mId];
+            if (!chart) return;
+            
+            const chartData = getMetricChartData(mId);
+            chart.data = chartData;
+            chart.update();
+        }
+
+        // Scale type switch
+        function toggleLogScale(mId) {
+            const chart = activeCharts[mId];
+            if (!chart) return;
+            
+            const logScale = document.getElementById(`${mId}-logScale`).checked;
+            chart.options.scales.y.type = logScale ? 'logarithmic' : 'linear';
+            chart.update();
+        }
+
+        // Chart layout type switch
+        function changeChartType(mId) {
+            const chart = activeCharts[mId];
+            if (!chart) return;
+            
+            const chartType = document.getElementById(`${mId}-chartType`).value;
+            
+            // Destruct and rebuild because Chart.js doesn't allow direct hot-swapping types cleanly
+            chart.destroy();
+            
+            const ctx = document.getElementById(`${mId}-chart`).getContext('2d');
+            const scaleType = document.getElementById(`${mId}-logScale`).checked ? 'logarithmic' : 'linear';
+            const chartData = getMetricChartData(mId);
+            
+            activeCharts[mId] = new Chart(ctx, {
+                type: chartType,
+                data: chartData,
+                options: getMetricChartOptions(mId, scaleType)
+            });
+        }
+
+        function getMetricChartData(mId) {
+            const rawData = metricsPayload[mId].properties;
+            // Filter by checkboxes
+            const filteredData = rawData.filter(p => visibleProperties[mId][p.name]);
+            
+            const labels = filteredData.map(p => p.name);
+            const chartType = document.getElementById(`${mId}-chartType`).value;
+            
+            if (chartType === 'bar') {
+                return {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Current',
+                            data: filteredData.map(p => p.cur_raw),
+                            backgroundColor: 'rgba(99, 102, 241, 0.85)',
+                            borderColor: 'rgb(99, 102, 241)',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Last Week',
+                            data: filteredData.map(p => p.lw_raw),
+                            backgroundColor: 'rgba(56, 189, 248, 0.7)',
+                            borderColor: 'rgb(56, 189, 248)',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Last Month',
+                            data: filteredData.map(p => p.lm_raw),
+                            backgroundColor: 'rgba(251, 191, 36, 0.7)',
+                            borderColor: 'rgb(251, 191, 36)',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Last Year',
+                            data: filteredData.map(p => p.ly_raw),
+                            backgroundColor: 'rgba(244, 63, 94, 0.7)',
+                            borderColor: 'rgb(244, 63, 94)',
+                            borderWidth: 1
+                        }
+                    ]
+                };
+            } else {
+                // Line chart is cleaner when showing curves across periods for each property
+                // Labels will be periods: Last Year, Last Month, Last Week, Current
+                const periods = ['Last Year', 'Last Month', 'Last Week', 'Current'];
+                const datasets = filteredData.map((p, index) => {
+                    const colors = [
+                        '#6366f1', '#10b981', '#f59e0b', '#ef4444', 
+                        '#8b5cf6', '#ec4899', '#06b6d4', '#14b8a6', 
+                        '#f97316', '#84cc16', '#64748b'
+                    ];
+                    const color = colors[index % colors.length];
+                    return {
+                        label: p.name,
+                        data: [p.ly_raw, p.lm_raw, p.lw_raw, p.cur_raw],
+                        borderColor: color,
+                        backgroundColor: color + '22',
+                        borderWidth: 3,
+                        tension: 0.15,
+                        fill: false
+                    };
+                });
+                
+                return {
+                    labels: periods,
+                    datasets: datasets
+                };
+            }
+        }
+
+        function getMetricChartOptions(mId, scaleType) {
+            return {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { color: getTickColor(), font: { family: 'Inter', size: 11 } }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = ` ${context.dataset.label || ''}: `;
+                                let val = context.raw;
+                                if (mId === 'ctr') {
+                                    label += val.toFixed(2) + '%';
+                                } else if (mId === 'position') {
+                                    label += val.toFixed(2);
+                                } else {
+                                    label += val.toLocaleString();
+                                }
+                                return label;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: { color: getGridColor() },
+                        ticks: { color: getTickColor(), font: { family: 'Inter', size: 10 } }
+                    },
+                    y: {
+                        type: scaleType,
+                        grid: { color: getGridColor() },
+                        ticks: { 
+                            color: getTickColor(), 
+                            font: { family: 'Inter', size: 10 },
+                            callback: function(value) {
+                                if (mId === 'ctr') return value + '%';
+                                return value.toLocaleString();
+                            }
+                        }
+                    }
+                }
+            };
+        }
+
+        // Sorting & Searching implementation
+        let overviewSortCol = -1;
+        let overviewSortAsc = true;
+        
+        function sortOverviewTable(colIdx) {
+            const table = document.getElementById('overviewTable');
+            const tbody = table.querySelector('tbody');
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+            
+            if (overviewSortCol === colIdx) {
+                overviewSortAsc = !overviewSortAsc;
+            } else {
+                overviewSortCol = colIdx;
+                overviewSortAsc = true;
+            }
+            
+            const ths = table.querySelectorAll('thead th');
+            ths.forEach((th, idx) => {
+                th.classList.remove('sort-asc', 'sort-desc');
+                if (idx === colIdx) {
+                    th.classList.add(overviewSortAsc ? 'sort-asc' : 'sort-desc');
+                }
+            });
+
+            rows.sort((a, b) => {
+                let cellA = a.cells[colIdx].innerText;
+                let cellB = b.cells[colIdx].innerText;
+                
+                // Parse percentage or numerical values
+                if (colIdx > 0) {
+                    cellA = parseFloat(cellA.replace(/,/g, '').replace(/%/g, ''));
+                    cellB = parseFloat(cellB.replace(/,/g, '').replace(/%/g, ''));
+                    
+                    if (isNaN(cellA)) cellA = -Infinity;
+                    if (isNaN(cellB)) cellB = -Infinity;
+                }
+                
+                if (cellA < cellB) return overviewSortAsc ? -1 : 1;
+                if (cellA > cellB) return overviewSortAsc ? 1 : -1;
+                return 0;
+            });
+            
+            tbody.innerHTML = '';
+            rows.forEach(r => tbody.appendChild(r));
+        }
+
+        function filterOverviewTable() {
+            const query = document.getElementById('overviewSearchInput').value.toLowerCase();
+            const rows = document.querySelectorAll('#overviewTable tbody tr');
+            
+            rows.forEach(r => {
+                const name = r.cells[0].innerText.toLowerCase();
+                if (name.includes(query)) {
+                    r.classList.remove('d-none');
+                } else {
+                    r.classList.add('d-none');
+                }
+            });
+        }
+
+        // Metric tables sort and filter
+        const metricSortStates = {};
+
+        function sortMetricTable(mId, colIdx) {
+            const table = document.getElementById(`${mId}-table`);
+            const tbody = table.querySelector('tbody');
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+            
+            if (!metricSortStates[mId]) {
+                metricSortStates[mId] = { col: -1, asc: true };
+            }
+            
+            const ths = table.querySelectorAll('thead th');
+            ths.forEach((th, idx) => {
+                th.classList.remove('sort-asc', 'sort-desc');
+                if (idx === colIdx) {
+                    th.classList.add(metricSortStates[mId].asc ? 'sort-asc' : 'sort-desc');
+                }
+            });
+
+            if (metricSortStates[mId].col === colIdx) {
+                metricSortStates[mId].asc = !metricSortStates[mId].asc;
+            } else {
+                metricSortStates[mId].col = colIdx;
+                metricSortStates[mId].asc = true;
+            }
+
+            const state = metricSortStates[mId];
+
+            rows.sort((a, b) => {
+                let cellA = a.cells[colIdx].innerText;
+                let cellB = b.cells[colIdx].innerText;
+                
+                if (colIdx > 0) {
+                    cellA = parseFloat(cellA.replace(/,/g, '').replace(/%/g, ''));
+                    cellB = parseFloat(cellB.replace(/,/g, '').replace(/%/g, ''));
+                    
+                    if (isNaN(cellA)) cellA = -Infinity;
+                    if (isNaN(cellB)) cellB = -Infinity;
+                }
+                
+                if (cellA < cellB) return state.asc ? -1 : 1;
+                if (cellA > cellB) return state.asc ? 1 : -1;
+                return 0;
+            });
+            
+            tbody.innerHTML = '';
+            rows.forEach(r => tbody.appendChild(r));
+        }
+
+        function filterMetricTable(mId) {
+            const query = document.getElementById(`${mId}-searchInput`).value.toLowerCase();
+            const rows = document.querySelectorAll(`#${mId}-table tbody tr`);
+            
+            rows.forEach(r => {
+                const name = r.cells[0].innerText.toLowerCase();
+                if (name.includes(query)) {
+                    r.classList.remove('d-none');
+                } else {
+                    r.classList.add('d-none');
+                }
+            });
+        }
+    </script>
 </body>
 </html>

@@ -102,7 +102,11 @@ def get_metric_table_data(cur_val, lw_val, lm_val, ly_val, metric_type):
         "cur": format_val(cur_val),
         "lw": format_val(lw_val), "lw_pct": lw_pct, "lw_class": get_status_class(lw_pct, metric_type),
         "lm": format_val(lm_val), "lm_pct": lm_pct, "lm_class": get_status_class(lm_pct, metric_type),
-        "ly": format_val(ly_val), "ly_pct": ly_pct, "ly_class": get_status_class(ly_pct, metric_type)
+        "ly": format_val(ly_val), "ly_pct": ly_pct, "ly_class": get_status_class(ly_pct, metric_type),
+        "cur_raw": cur_val if cur_val is not None else 0.0,
+        "lw_raw": lw_val if lw_val is not None else 0.0,
+        "lm_raw": lm_val if lm_val is not None else 0.0,
+        "ly_raw": ly_val if ly_val is not None else 0.0
     }
 
 def run_report(args, service):
@@ -139,7 +143,47 @@ def run_report(args, service):
                 cur[m_id], lw[m_id], lm[m_id], ly[m_id], m_id
             )
             m_data['name'] = prop['name']
+            m_data['siteUrl'] = site_url
             metrics_data[m_id]['properties'].append(m_data)
+
+    # Calculate portfolio health statistics
+    portfolio_health = {
+        'total': len(properties),
+        'critical': 0,
+        'warning': 0,
+        'stable': 0,
+        'total_list': [],
+        'critical_list': [],
+        'warning_list': [],
+        'stable_list': []
+    }
+    
+    for prop_idx in range(len(properties)):
+        prop_name = properties[prop_idx]['name']
+        portfolio_health['total_list'].append(prop_name)
+        
+        # Check WoW and MoM statuses
+        clicks_lw = metrics_data['clicks']['properties'][prop_idx]['lw_class']
+        clicks_lm = metrics_data['clicks']['properties'][prop_idx]['lm_class']
+        
+        imp_lw = metrics_data['impressions']['properties'][prop_idx]['lw_class']
+        imp_lm = metrics_data['impressions']['properties'][prop_idx]['lm_class']
+        
+        ctr_lw = metrics_data['ctr']['properties'][prop_idx]['lw_class']
+        pos_lw = metrics_data['position']['properties'][prop_idx]['lw_class']
+        
+        # Classify as critical if any metric has a severe drop (red), or warning if moderate (amber)
+        statuses = [clicks_lw, clicks_lm, imp_lw, imp_lm, ctr_lw, pos_lw]
+        
+        if 'red' in statuses:
+            portfolio_health['critical'] += 1
+            portfolio_health['critical_list'].append(prop_name)
+        elif 'amber' in statuses:
+            portfolio_health['warning'] += 1
+            portfolio_health['warning_list'].append(prop_name)
+        else:
+            portfolio_health['stable'] += 1
+            portfolio_health['stable_list'].append(prop_name)
 
     env = Environment(loader=FileSystemLoader('templates'))
     template = env.get_template('canary_report.html')
@@ -147,7 +191,9 @@ def run_report(args, service):
     html_output = template.render(
         report_timestamp=datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         periods=periods,
-        metrics_data=metrics_data
+        metrics_data=metrics_data,
+        portfolio_health=portfolio_health,
+        metrics_data_json=json.dumps(metrics_data)
     )
     
     os.makedirs(args.output_dir, exist_ok=True)
